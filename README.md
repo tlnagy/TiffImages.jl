@@ -6,6 +6,8 @@
 
 This package aims to be a fast, minimal, and correct TIFF reader and writer written in Julia. 
 
+This is a WIP. Be warned. Here be🐉.
+
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://tamasnagy.com/TIFF.jl/dev
 
