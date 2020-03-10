@@ -106,7 +106,7 @@ function Base.read!(target::AbstractArray, tf::TiffFile, ifd::IFD)
         end
     else
         seek(tf, strip_offsets[1])
-        read!(tf, vec(target))
+        read!(tf, target)
     end
 end
 
