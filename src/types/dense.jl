@@ -1,4 +1,4 @@
-struct DenseTaggedImage{T, N, O} <: AbstractTIFF{T, N} where {O <: Unsigned}
+struct DenseTaggedImage{T, N, O} <: AbstractDenseTIFF{T, N} where {O <: Unsigned}
     data::AbstractArray{T, N}
 
     ifds::Vector{IFD{O}}
