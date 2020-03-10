@@ -76,7 +76,7 @@ function Base.iterate(file::TiffFile, state::Tuple{Union{IFD{O}, Nothing}, Int})
     return (curr_ifd, (next_ifd, next_ifd_offset))
 end
 
-function Base.read(tf::TiffFile, ifd::IFD)
+function Base.read!(target::AbstractArray, tf::TiffFile, ifd::IFD)
     nrows = get(tf, ifd[IMAGELENGTH])[1]
     ncols = get(tf, ifd[IMAGEWIDTH])[1]
 
@@ -99,22 +99,15 @@ function Base.read(tf::TiffFile, ifd::IFD)
     planarconfig = get(tf, getindex(ifd, PLANARCONFIG, 1))[1]
     (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
 
-    raw_data = Array{rawtype}(undef, strip_nbytes[1]÷sizeof(rawtype))
-
     if nstrips > 1
-        data = Array{rawtype}(undef, nrows, ncols)
         for i in 1:nstrips
             seek(tf, strip_offsets[i])
-            read!(tf, raw_data)
-            data[:, i] .= raw_data
+            read!(tf, view(target, :, i))
         end
     else
         seek(tf, strip_offsets[1])
-        read!(tf, raw_data)
-        data = reshape(raw_data, Int(nrows), Int(ncols))
+        read!(tf, vec(target))
     end
-
-    reinterpret(Gray{mappedtype}, data)
 end
 
 

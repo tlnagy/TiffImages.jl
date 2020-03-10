@@ -27,6 +27,16 @@ mutable struct TiffFile{O <: Unsigned}
     end
 end
 
+TiffFile(io::IOStream) = TiffFile(Stream(format"TIFF", io, extract_filename(io)))
+
+"""
+    offset(file)
+
+Returns the type of the TIFF file offset. For most TIFFs, it should be UInt32,
+while for BigTIFFs it will be UInt64.
+"""
+offset(file::TiffFile{O}) where {O} = O
+
 function Base.read(file::TiffFile{O}, ::Type{T}) where {O, T}
     value = read(file.io, T)
     file.need_bswap ? bswap(value) : value
@@ -37,8 +47,8 @@ function Base.read(file::TiffFile{O}, ::Type{String}) where O
     file.need_bswap ? bswap(value) : value
 end
 
-function Base.read!(file::TiffFile, arr::Array)
-    read!(file.io, arr)
+function Base.read!(file::TiffFile, arr::AbstractArray)
+    read!(stream(file.io), arr)
     if file.need_bswap
         arr .= bswap.(arr)
     end
@@ -49,8 +59,6 @@ Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
 Base.bswap(x::Rational{T}) where {T} = Rational(bswap(x.num), bswap(x.den))
 
 Base.IteratorSize(::TiffFile) = Base.SizeUnknown()
-
-TiffFile(io::IOStream) = TiffFile(Stream(format"TIFF", io, extract_filename(io)))
 
 """
     do_bswap(file, values) -> Array

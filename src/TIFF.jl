@@ -9,6 +9,8 @@ include("utils.jl")
 include("files.jl")
 include("tags.jl")
 include("ifds.jl")
-include("arrays.jl")
+include(joinpath("types", "common.jl"))
+include(joinpath("types", "dense.jl"))
+include("load.jl")
 
 end # module
