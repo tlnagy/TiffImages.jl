@@ -56,3 +56,14 @@ const type_mapping = Dict(
   0x0012 => UInt64,           # IFD8
 )
 
+# sampleformat, bitspersample => Julian type
+const rawtype_mapping = Dict(
+    (SAMPLEFORMAT_UINT, 1) => Bool,
+    (SAMPLEFORMAT_UINT, 8) => UInt8,
+    (SAMPLEFORMAT_UINT, 16) => UInt16,
+    (SAMPLEFORMAT_UINT, 32) => UInt32,
+    (SAMPLEFORMAT_UINT, 64) => UInt64,
+    (SAMPLEFORMAT_IEEEFP, 16) => Float16,
+    (SAMPLEFORMAT_IEEEFP, 32) => Float32,
+    (SAMPLEFORMAT_IEEEFP, 64) => Float64,
+)

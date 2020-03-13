@@ -30,18 +30,10 @@ function Base.read(tf::TiffFile, ::Type{IFD{O}}) where O <: Unsigned
 
     entries = Dict{UInt16, Tag{O}}()
 
-    # tag_info = Array{UInt16}(undef, 2)
-    # data_info = Array{O}(undef, 2)
-
     k = keys(type_mapping)
     for i in 1:N
         tag = read(tf, Tag{O})
         entries[tag.tag] = tag
-        # read!(tf, tag_info)
-        # read!(tf, data_info)
-        # if tag_info[2] in k
-        #     entries[tag_info[1]] = Tag(tag_info[1], type_mapping[tag_info[2]], data_info...)
-        # end
     end
 
     next_ifd = Int(read(tf, O))
@@ -76,25 +68,54 @@ function Base.iterate(file::TiffFile, state::Tuple{Union{IFD{O}, Nothing}, Int})
     return (curr_ifd, (next_ifd, next_ifd_offset))
 end
 
+struct IFDLayout
+    nsamples::Int
+    nrows::Int
+    ncols::Int
+    rawtype::DataType
+    mappedtype::DataType
+    interpretation::PhotometricInterpretations
+end
+
+IFDLayout() = IFDLayout(1,1,1, UInt16, N0f16, PHOTOMETRIC_MINISBLACK)
+
+function output(tf::TiffFile, ifd::IFD)
+    nrows = Int(get(tf, ifd[IMAGELENGTH])[1])
+    ncols = Int(get(tf, ifd[IMAGEWIDTH])[1])
+
+    samplesperpixel = Int(get(tf, getindex(ifd, SAMPLESPERPIXEL, 1))[1])
+    sampleformats = get(tf, getindex(ifd, SAMPLEFORMAT, 1))
+
+    interpretation = get(tf, ifd[PHOTOMETRIC])[1]
+
+    bitsperpixel = get(tf, getindex(ifd, BITSPERSAMPLE, 1))
+    rawtypes = Set{DataType}()
+    mappedtypes = Set{DataType}()
+    for i in 1:samplesperpixel
+        rawtype = rawtype_mapping[(SampleFormats(sampleformats[i]), bitsperpixel[i])]
+        push!(rawtypes, rawtype)
+        if rawtype <: Unsigned
+            push!(mappedtypes, Normed{rawtype, sizeof(rawtype)*8})
+        else
+            push!(mappedtypes, rawtype)
+        end
+    end
+    (length(rawtypes) > 1) && error("Variable per-pixel storage types are not yet supported")
+    IFDLayout(
+        samplesperpixel, nrows, ncols, 
+        first(rawtypes),
+        first(mappedtypes), 
+        PhotometricInterpretations(interpretation))
+end
+
 function Base.read!(target::AbstractArray, tf::TiffFile, ifd::IFD)
-    nrows = get(tf, ifd[IMAGELENGTH])[1]
-    ncols = get(tf, ifd[IMAGEWIDTH])[1]
+    layout = output(tf, ifd)
 
     rowsperstrip = get(tf, ifd[ROWSPERSTRIP])[1]
-    nstrips = ceil(Int, nrows / rowsperstrip)
+    nstrips = ceil(Int, layout.nrows / rowsperstrip)
 
     strip_nbytes = get(tf, ifd[STRIPBYTECOUNTS])
     strip_offsets = get(tf, ifd[STRIPOFFSETS])
-
-    interpretation = get(tf, ifd[PHOTOMETRIC])[1]
-    conv = Gray
-
-    bitsperpixel = get(tf, getindex(ifd, BITSPERSAMPLE, 1))[1]
-    rawtype = UInt16
-    mappedtype = Normed{rawtype, Int(bitsperpixel)}
-
-    samplesperpixel = get(tf, getindex(ifd, SAMPLESPERPIXEL, 1))
-    sampleformat = get(tf, getindex(ifd, SAMPLEFORMAT, 1))
 
     planarconfig = get(tf, getindex(ifd, PLANARCONFIG, 1))[1]
     (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
@@ -102,12 +123,10 @@ function Base.read!(target::AbstractArray, tf::TiffFile, ifd::IFD)
     if nstrips > 1
         for i in 1:nstrips
             seek(tf, strip_offsets[i])
-            read!(tf, view(target, :, i))
+            read!(tf, view(target, :, :, i))
         end
     else
         seek(tf, strip_offsets[1])
         read!(tf, target)
     end
 end
-
-

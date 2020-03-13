@@ -1,33 +1,41 @@
 function load(filepath)
     tf = TiffFile(open(filepath))
 
-    nrows = 1
-    ncols = 1
-    nplanes = 1
-    bitsperpixel = 1
-
     isdense = true
     ifds = IFD{offset(tf)}[]
+
+    layout = nothing
+    nplanes = 0
 
     for ifd in tf
         push!(ifds, ifd)
 
-        nrows = Int(get(tf, ifd[IMAGEWIDTH])[1])
-        ncols = Int(get(tf, ifd[IMAGELENGTH])[1])
+        new_layout = output(tf, ifd)
 
-        bitsperpixel = Int(get(tf, getindex(ifd, BITSPERSAMPLE, 1))[1])
+        # if we detect variance in the format of the IFD data then we can't
+        # represent the image as a dense array
+        if layout != nothing && layout != new_layout
+            isdense = false
+            @info "Not dense"
+        end
+        layout = new_layout
 
         nplanes += 1
     end
 
-    rawtype = UInt16
-    mappedtype = Normed{rawtype, bitsperpixel}
-
-    data = Array{rawtype}(undef, nrows, ncols, nplanes)
+    data = Array{layout.rawtype}(undef, layout.nsamples, layout.ncols, layout.nrows, nplanes)
     for (idx, ifd) in enumerate(ifds)
-        read!(view(data, :, :, idx), tf, ifd)
+        read!(PermutedDimsArray(view(data, :, :, :, idx), [1, 3, 2]), tf, ifd)
     end
 
     close(tf.io)
-    DenseTaggedImage(reinterpret(Gray{mappedtype}, data), ifds)
+    colortype = nothing
+    if layout.interpretation == PHOTOMETRIC_MINISBLACK
+        colortype = Gray{layout.mappedtype}
+    elseif layout.interpretation == PHOTOMETRIC_RGB
+        colortype = RGB{layout.mappedtype}
+    else
+        error("Given TIFF requests $(layout.interpretation) interpretation, but that's not yet supported")
+    end
+    DenseTaggedImage(dropdims(reinterpret(colortype, data), dims=1), ifds)
 end

@@ -79,19 +79,6 @@
 #define     COMPRESSION_JP2000          34712   /* Leadtools JPEG2000 */
 #define	    COMPRESSION_LZMA		34925	/* LZMA2 */
 	PHOTOMETRIC = 262 			 #  photometric interpretation
-#define	    PHOTOMETRIC_MINISWHITE	0	/* min value is white */
-#define	    PHOTOMETRIC_MINISBLACK	1	/* min value is black */
-#define	    PHOTOMETRIC_RGB		2	/* RGB color model */
-#define	    PHOTOMETRIC_PALETTE		3	/* color map indexed */
-#define	    PHOTOMETRIC_MASK		4	/* $holdout mask */
-#define	    PHOTOMETRIC_SEPARATED	5	/* !color separations */
-#define	    PHOTOMETRIC_YCBCR		6	/* !CCIR 601 */
-#define	    PHOTOMETRIC_CIELAB		8	/* !1976 CIE L*a*b* */
-#define	    PHOTOMETRIC_ICCLAB		9	/* ICC L*a*b* [Adobe TIFF Technote 4] */
-#define	    PHOTOMETRIC_ITULAB		10	/* ITU L*a*b* */
-#define	    PHOTOMETRIC_CFA		32803	/* color filter array */
-#define     PHOTOMETRIC_LOGL		32844	/* CIE Log2(L) */
-#define     PHOTOMETRIC_LOGLUV		32845	/* CIE Log2(L) (u',v') */
 	THRESHHOLDING = 263 			 #  +thresholding used on data
 #define	    THRESHHOLD_BILEVEL		1	/* b&w art scan */
 #define	    THRESHHOLD_HALFTONE		2	/* or dithered scan */
@@ -483,4 +470,29 @@
 	EXIFTAG_DEVICESETTINGDESCRIPTION = 41995 			 #  Device settings description
 	EXIFTAG_SUBJECTDISTANCERANGE = 41996 			 #  Subject distance range
 	EXIFTAG_IMAGEUNIQUEID = 42016 			 #  Unique image ID
+end
+
+@enum SampleFormats begin
+	SAMPLEFORMAT_UINT = 1				# !unsigned integer data
+	SAMPLEFORMAT_INT = 2				# !signed integer data
+	SAMPLEFORMAT_IEEEFP = 3				# !IEEE floating point data 
+	SAMPLEFORMAT_VOID = 4				# !untyped data
+	SAMPLEFORMAT_COMPLEXINT = 5			# !complex signed int
+	SAMPLEFORMAT_COMPLEXIEEEFP = 6		# !complex ieee floating
+end
+
+@enum PhotometricInterpretations begin
+	PHOTOMETRIC_MINISWHITE = 0		# min value is white
+	PHOTOMETRIC_MINISBLACK = 1		# min value is black
+	PHOTOMETRIC_RGB = 2				# RGB color model
+	PHOTOMETRIC_PALETTE = 3			# color map indexed
+	PHOTOMETRIC_MASK = 4			# $holdout mask
+	PHOTOMETRIC_SEPARATED = 5		# !color separations
+	PHOTOMETRIC_YCBCR = 6			# !CCIR 601
+	PHOTOMETRIC_CIELAB = 8			# !1976 CIE L*a*b*
+	PHOTOMETRIC_ICCLAB = 9			# ICC L*a*b* [Adobe TIFF Technote 4]
+	PHOTOMETRIC_ITULAB = 10			# ITU L*a*b*
+	PHOTOMETRIC_CFA = 32803			# color filter array
+	PHOTOMETRIC_LOGL = 32844		# CIE Log2(L)
+	PHOTOMETRIC_LOGLUV = 32845		# CIE Log2(L) (u',v')
 end
