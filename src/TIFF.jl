@@ -3,6 +3,7 @@ module TIFF
 using ColorTypes
 using FileIO
 using FixedPointNumbers
+using ProgressMeter
 
 include("enum.jl")
 include("utils.jl")

@@ -24,7 +24,7 @@ function load(filepath)
     end
 
     data = Array{layout.rawtype}(undef, layout.nsamples, layout.ncols, layout.nrows, nplanes)
-    for (idx, ifd) in enumerate(ifds)
+    @showprogress for (idx, ifd) in enumerate(ifds)
         read!(PermutedDimsArray(view(data, :, :, :, idx), [1, 3, 2]), tf, ifd)
     end
 
