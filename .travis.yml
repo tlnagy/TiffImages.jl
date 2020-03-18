@@ -9,10 +9,6 @@ notifications:
   email:
     - github@tamasnagy.com
 
-matrix:
- allow_failures:
- - julia: nightly
-
 after_success:
   # push coverage results to Codecov
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())' 
@@ -27,3 +23,5 @@ jobs:
                                                Pkg.instantiate()'
         - julia --project=docs/ docs/make.jl
       after_success: skip
+  allow_failures:
+    - julia: nightly
