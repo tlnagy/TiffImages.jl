@@ -23,7 +23,7 @@ function load(filepath)
         nplanes += 1
     end
 
-    data = Array{layout.rawtype}(undef, layout.nsamples, layout.ncols, layout.nrows, nplanes)
+    data = Array{layout.rawtype}(undef, layout.nsamples, layout.nrows, layout.ncols, nplanes)
     @showprogress for (idx, ifd) in enumerate(ifds)
         read!(PermutedDimsArray(view(data, :, :, :, idx), [1, 3, 2]), tf, ifd)
     end
