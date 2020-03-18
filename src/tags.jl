@@ -31,7 +31,7 @@ function get(tf::TiffFile, t::Tag)
     data = Array{T}(undef, t.count)
     if sz * t.count <= 4
         io = IOBuffer()
-        write(io, tf.need_bswap ? bswap.(t.data) : t.data)
+        write(io, t.data)
         seekstart(io)
     else
         data = Array{T}(undef, t.count)
