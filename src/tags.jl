@@ -28,14 +28,17 @@ function get(tf::TiffFile, t::Tag)
     sz = sizeof(T)
     curr_pos = position(tf.io)
 
-
+    data = Array{T}(undef, t.count)
     if sz * t.count <= 4
-        data = [t.data]
+        io = IOBuffer()
+        write(io, tf.need_bswap ? bswap.(t.data) : t.data)
+        seekstart(io)
     else
         data = Array{T}(undef, t.count)
+        io = tf
         seek(tf, t.data)
-        read!(tf, data)
     end
+    read!(io, data)
 
     if t.datatype == String
         data = String(data)
