@@ -35,6 +35,54 @@ function offsetsize(io::Stream)
 end
 
 
+
+const _mask1_uint128 = (UInt128(0x5555555555555555) << 64) | UInt128(0x5555555555555555)
+const _mask2_uint128 = (UInt128(0x3333333333333333) << 64) | UInt128(0x3333333333333333)
+const _mask4_uint128 = (UInt128(0x0f0f0f0f0f0f0f0f) << 64) | UInt128(0x0f0f0f0f0f0f0f0f)
+
+"""
+    reversebits(x)
+
+Reverse the bit order in each byte of `x`. Julia assumes the first bit of each
+byte is packed as a 0x01, while in TIFFs it's actually packed as 0x80. This
+function flips the bit packing order. 
+
+!!! note
+    This function does not flip the byte packing order, a la `bswap`.
+
+This function should be applied to a BitArray after it is read in via
+[`reversebits!`](@ref). 
+
+Code adapted from https://github.com/JuliaLang/julia/pull/34791
+
+```jldoctest
+julia> TIFF.reversebits(0x0101) == 0x8080
+true
+```
+"""
+function reversebits(x::Base.BitInteger)
+    z = unsigned(x)
+    mask1 = _mask1_uint128 % typeof(z)
+    mask2 = _mask2_uint128 % typeof(z)
+    mask4 = _mask4_uint128 % typeof(z)
+    z = ((z & mask1) << 1) | ((z >> 1) & mask1)
+    z = ((z & mask2) << 2) | ((z >> 2) & mask2)
+    z = ((z & mask4) << 4) | ((z >> 4) & mask4)
+    return z
+end
+
+"""
+    reversebits!(x)
+
+Flips the bits in every byte backing `x`. Does not change byte order.
+"""
+function reversebits!(x::BitArray)
+    n = length(x.chunks)
+    for i in 1:n
+        x.chunks[i] = reversebits(x.chunks[i])
+    end
+end
+
 # using rephorm's table from
 # https://github.com/rephorm/TIFF.jl/blob/master/tiff.jl#L30
 const type_mapping = Dict(

@@ -1,6 +1,6 @@
-using TIFF
+using Documenter
 using Test
+using TIFF
 
-@testset "TIFF.jl" begin
-    # Write your own tests here.
-end
+DocMeta.setdocmeta!(TIFF, :DocTestSetup, :(using TIFF); recursive=true)
+doctest(TIFF)

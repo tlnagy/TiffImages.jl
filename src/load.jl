@@ -22,10 +22,22 @@ function load(filepath)
 
         nplanes += 1
     end
-
-    data = Array{layout.rawtype}(undef, layout.nsamples, layout.nrows, layout.ncols, nplanes)
+    if layout.rawtype == Bool
+        data = BitArray(undef, layout.nbytes*8, nplanes)
+    else
+        data = Array{layout.rawtype}(undef, layout.nbytes÷sizeof(layout.rawtype), nplanes)
+    end
     @showprogress for (idx, ifd) in enumerate(ifds)
-        read!(PermutedDimsArray(view(data, :, :, :, idx), [1, 3, 2]), tf, ifd)
+        read!(view(data, :, idx), tf, ifd)
+    end
+    trans = reshape(data, :, layout.nrows, nplanes) 
+    if layout.rawtype == Bool
+        trans = view(trans, 1:layout.ncols, 1:layout.nrows, 1:nplanes)
+    end
+    if layout.nsamples > 1
+        trans = PermutedDimsArray(reshape(trans, layout.nsamples, layout.ncols, layout.nrows, nplanes), [1, 3, 2, 4])
+    else
+        trans = PermutedDimsArray(trans, [2, 1, 3])
     end
 
     close(tf.io)
@@ -37,5 +49,7 @@ function load(filepath)
     else
         error("Given TIFF requests $(layout.interpretation) interpretation, but that's not yet supported")
     end
-    DenseTaggedImage(dropdims(reinterpret(colortype, data), dims=1), ifds)
+    trans = reinterpret(colortype, trans)
+    todrop = tuple(findall(size(trans) .== 1)...)
+    DenseTaggedImage(dropdims(trans, dims=todrop), ifds)
 end

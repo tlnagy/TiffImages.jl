@@ -72,6 +72,7 @@ struct IFDLayout
     nsamples::Int
     nrows::Int
     ncols::Int
+    nbytes::Int
     rawtype::DataType
     mappedtype::DataType
     interpretation::PhotometricInterpretations
@@ -88,6 +89,7 @@ function output(tf::TiffFile, ifd::IFD)
 
     interpretation = get(tf, ifd[PHOTOMETRIC])[1]
 
+    strip_nbytes = get(tf, ifd[STRIPBYTECOUNTS])
     bitsperpixel = get(tf, getindex(ifd, BITSPERSAMPLE, 1))
     rawtypes = Set{DataType}()
     mappedtypes = Set{DataType}()
@@ -102,13 +104,14 @@ function output(tf::TiffFile, ifd::IFD)
     end
     (length(rawtypes) > 1) && error("Variable per-pixel storage types are not yet supported")
     IFDLayout(
-        samplesperpixel, nrows, ncols, 
+        samplesperpixel, nrows, ncols,
+        Int(sum(strip_nbytes)),
         first(rawtypes),
         first(mappedtypes), 
         PhotometricInterpretations(interpretation))
 end
 
-function Base.read!(target::AbstractArray, tf::TiffFile, ifd::IFD)
+function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {T, N}
     layout = output(tf, ifd)
 
     rowsperstrip = get(tf, ifd[ROWSPERSTRIP])[1]
@@ -121,9 +124,12 @@ function Base.read!(target::AbstractArray, tf::TiffFile, ifd::IFD)
     (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
 
     if nstrips > 1
+        startbyte = 1
         for i in 1:nstrips
             seek(tf, strip_offsets[i])
-            read!(tf, view(target, :, :, i))
+            nbytes = Int(strip_nbytes[i] / sizeof(T))
+            read!(tf, view(target, startbyte:(startbyte+nbytes-1)))
+            startbyte += nbytes
         end
     else
         seek(tf, strip_offsets[1])

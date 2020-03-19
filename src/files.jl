@@ -54,6 +54,25 @@ function Base.read!(file::TiffFile, arr::AbstractArray)
     end
 end
 
+function Base.read!(io::IOStream, arr::SubArray{T,N,P,I,L}) where {T, N, P <: BitArray, I <: Tuple{UnitRange, Int64}, L}
+    error("Strided bilevel TIFFs are not yet supported. Please open an issue against TIFF.jl.")
+end
+
+function Base.read!(io::IOStream, arr::SubArray{T,N,P,I,L}) where {T, N, P <: BitArray, I <: Tuple{Base.Slice, Int64}, L}
+    rng = arr.offset1 .+ arr.indices[1]
+    n = length(rng)
+    Bc = view(parent(arr).chunks, (Base.get_chunks_id(rng.start)[1]):(Base.get_chunks_id(rng.stop)[1]))
+    nc = length(read!(io, Bc))
+    if length(Bc) > 0 && Bc[end] & Base._msk_end(n) ≠ Bc[end]
+        Bc[end] &= Base._msk_end(n) # ensure that the BitArray is not broken
+        throw(DimensionMismatch("read mismatch, found non-zero bits after BitArray length"))
+    end
+    for i in 1:nc
+       Bc[i] = TIFF.reversebits(Bc[i]) 
+    end
+    arr
+end
+
 Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
 
 Base.bswap(x::Rational{T}) where {T} = Rational(bswap(x.num), bswap(x.den))
