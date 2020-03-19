@@ -40,16 +40,24 @@ function load(filepath)
         trans = PermutedDimsArray(trans, [2, 1, 3])
     end
 
-    close(tf.io)
     colortype = nothing
-    if layout.interpretation == PHOTOMETRIC_MINISBLACK
-        colortype = Gray{layout.mappedtype}
-    elseif layout.interpretation == PHOTOMETRIC_RGB
-        colortype = RGB{layout.mappedtype}
+    if layout.interpretation == PHOTOMETRIC_PALETTE
+        ifd = first(ifds)
+        maxdepth = 2^(get(tf, ifd[BITSPERSAMPLE])[1])-1
+        colors = get(tf, ifd[COLORMAP])
+        color_map = vec(reinterpret(RGB{N0f16}, reshape(colors, :, 3)'))
+        trans = IndirectArray(trans, OffsetArray(color_map, 0:maxdepth))
     else
-        error("Given TIFF requests $(layout.interpretation) interpretation, but that's not yet supported")
+        if layout.interpretation == PHOTOMETRIC_MINISBLACK
+            colortype = Gray{layout.mappedtype}
+        elseif layout.interpretation == PHOTOMETRIC_RGB
+            colortype = RGB{layout.mappedtype}
+        else
+            error("Given TIFF requests $(layout.interpretation) interpretation, but that's not yet supported")
+        end
+        trans = reinterpret(colortype, trans)
     end
-    trans = reinterpret(colortype, trans)
+    close(tf.io)
     todrop = tuple(findall(size(trans) .== 1)...)
     DenseTaggedImage(dropdims(trans, dims=todrop), ifds)
 end
