@@ -87,6 +87,10 @@ function output(tf::TiffFile, ifd::IFD)
     samplesperpixel = Int(get(tf, getindex(ifd, SAMPLESPERPIXEL, 1))[1])
     sampleformats = get(tf, getindex(ifd, SAMPLEFORMAT, 1))
 
+    if length(sampleformats) == 1 && samplesperpixel > 1
+        sampleformats = fill(sampleformats[1], samplesperpixel)
+    end
+
     interpretation = get(tf, ifd[PHOTOMETRIC])[1]
 
     strip_nbytes = get(tf, ifd[STRIPBYTECOUNTS])
