@@ -25,11 +25,12 @@ function load(filepath)
     if layout.rawtype == Bool
         data = BitArray(undef, layout.nbytes*8, nplanes)
     else
-        data = Array{layout.rawtype}(undef, layout.nbytes÷sizeof(layout.rawtype), nplanes)
+        data = Array{layout.readtype}(undef, layout.nbytes÷sizeof(layout.readtype), nplanes)
     end
     @showprogress for (idx, ifd) in enumerate(ifds)
         read!(view(data, :, idx), tf, ifd)
     end
+    data = reinterpret(layout.rawtype, data)
     trans = reshape(data, :, layout.nrows, nplanes) 
     if layout.rawtype == Bool
         trans = view(trans, 1:layout.ncols, 1:layout.nrows, 1:nplanes)

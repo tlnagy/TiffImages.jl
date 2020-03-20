@@ -10,6 +10,7 @@ using ProgressMeter
 include("enum.jl")
 include("utils.jl")
 include("files.jl")
+include("compression.jl")
 include("tags.jl")
 include("ifds.jl")
 include(joinpath("types", "common.jl"))

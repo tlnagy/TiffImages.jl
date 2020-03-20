@@ -14,7 +14,11 @@ function Base.show(io::IO, t::Tag{O}) where {O}
     end
     print(t.datatype, ", ")
     print(Int(t.count), ", ")
-    print(Int(t.data))
+    if t.tag == Int(COMPRESSION)
+        print(CompressionType(t.data))
+    else
+        print(Int(t.data))
+    end
     (isremote(t)) && print("*")
     print(")")
 end

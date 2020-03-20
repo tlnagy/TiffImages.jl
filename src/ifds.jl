@@ -73,8 +73,10 @@ struct IFDLayout
     nrows::Int
     ncols::Int
     nbytes::Int
+    readtype::DataType
     rawtype::DataType
     mappedtype::DataType
+    compression::CompressionType
     interpretation::PhotometricInterpretations
 end
 
@@ -94,6 +96,7 @@ function output(tf::TiffFile, ifd::IFD)
     interpretation = get(tf, ifd[PHOTOMETRIC])[1]
 
     strip_nbytes = get(tf, ifd[STRIPBYTECOUNTS])
+    nbytes = Int(sum(strip_nbytes))
     bitsperpixel = get(tf, getindex(ifd, BITSPERSAMPLE, 1))
     rawtypes = Set{DataType}()
     mappedtypes = Set{DataType}()
@@ -107,11 +110,25 @@ function output(tf::TiffFile, ifd::IFD)
         end
     end
     (length(rawtypes) > 1) && error("Variable per-pixel storage types are not yet supported")
+    rawtype = first(rawtypes)    
+    readtype = rawtype
+
+    compression = CompressionType(get(tf, getindex(ifd, COMPRESSION, 1))[1])
+
+    if compression != COMPRESSION_NONE
+        # recalculate nbytes if the data is compressed since the inflated data
+        # is most likely larger than the bytes on disk
+        nbytes = nrows*ncols*samplesperpixel*sizeof(rawtype)
+        readtype = UInt8
+    end
+
     IFDLayout(
         samplesperpixel, nrows, ncols,
-        Int(sum(strip_nbytes)),
-        first(rawtypes),
+        nbytes,
+        readtype,
+        rawtype,
         first(mappedtypes), 
+        compression,
         PhotometricInterpretations(interpretation))
 end
 
@@ -122,6 +139,14 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
     nstrips = ceil(Int, layout.nrows / rowsperstrip)
 
     strip_nbytes = get(tf, ifd[STRIPBYTECOUNTS])
+
+    if layout.compression != COMPRESSION_NONE
+        # strip_nbytes is the number of bytes pre-inflation so we need to
+        # calculate the expected size once decompressed and update the values
+        fill!(strip_nbytes, rowsperstrip*layout.ncols)
+        strip_nbytes[end] = (layout.nrows - (rowsperstrip * (nstrips-1))) * layout.ncols
+    end
+
     strip_offsets = get(tf, ifd[STRIPOFFSETS])
 
     planarconfig = get(tf, getindex(ifd, PLANARCONFIG, 1))[1]
@@ -132,11 +157,11 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
         for i in 1:nstrips
             seek(tf, strip_offsets[i])
             nbytes = Int(strip_nbytes[i] / sizeof(T))
-            read!(tf, view(target, startbyte:(startbyte+nbytes-1)))
+            read!(tf, view(target, startbyte:(startbyte+nbytes-1)), layout.compression)
             startbyte += nbytes
         end
     else
         seek(tf, strip_offsets[1])
-        read!(tf, target)
+        read!(tf, target, layout.compression)
     end
 end
