@@ -52,6 +52,7 @@ function load(filepath)
             colortype = Gray{layout.mappedtype}
         elseif layout.interpretation == PHOTOMETRIC_RGB
             colortype = RGB{layout.mappedtype}
+            trans = view(trans, 1:3, :, :, :)
         else
             error("Given TIFF requests $(layout.interpretation) interpretation, but that's not yet supported")
         end
