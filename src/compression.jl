@@ -27,3 +27,26 @@ function Base.read!(tf::TiffFile, arr::AbstractArray, ::Val{COMPRESSION_PACKBITS
         pos += 1 
     end
 end
+
+"""
+    get_inflator(x)
+
+Given a `read!` signature, returns the compression technique implemented.
+
+```jldoctest
+julia> TIFF.get_inflator(first(methods(read!, [TIFF.TiffFile, AbstractArray, Val], [TIFF])).sig)
+COMPRESSION_NONE::CompressionType = 1 
+```
+"""
+get_inflator(::Type{Tuple{F, T, A, Val{C}}}) where {F, T, A, C} = C
+
+# autogenerate nice error messages for all non-implemented inflation methods
+implemented = map(x->get_inflator(x.sig), methods(read!, [TiffFile, AbstractArray, Val], ))
+comps = Set(instances(TIFF.CompressionType))
+setdiff!(comps, implemented)
+
+for comp in comps
+    eval(quote
+        Base.read!(tf::TiffFile, arr::AbstractArray, ::Val{$comp}) = error("Compression ", $comp, " is not implemented. Please open an issue against TIFF.jl.")
+    end)
+end
