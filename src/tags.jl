@@ -23,7 +23,7 @@ isremote(t::Tag{O}) where {O} = bytes(t.datatype) * t.count > bytes(O)
 
 function get(tf::TiffFile, t::Tag)
     T = t.datatype
-    T = T == String ? UInt8 : T
+    (T == String || T == Any) && (T = UInt8)
 
     sz = sizeof(T)
     curr_pos = position(tf.io)
@@ -50,6 +50,7 @@ function get(tf::TiffFile, t::Tag)
 end
 
 bytes(x::Type) = sizeof(x)
+bytes(::Type{Any}) = 1
 bytes(::Type{String}) = 1
 
 function Base.read(tf::TiffFile, ::Type{Tag{O}}) where O <: Unsigned
