@@ -26,3 +26,11 @@ end
     @test eltype(img) == Gray{N0f8}
     @test img[50,50,1] == Gray{N0f8}(0.353) # value from ImageMagick.jl
 end
+
+@testset "RGB image" begin
+    filepath = testimage("lake_color.tif", download_only=true)
+    img = TIFF.load(filepath)
+    @test size(img) == (512, 512)
+    @test eltype(img) == RGB{N0f8}
+    @test img[50,50] == RGB{N0f8}(0.392,0.188,0.196) # value from ImageMagick.jl
+end
