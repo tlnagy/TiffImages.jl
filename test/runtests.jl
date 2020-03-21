@@ -34,3 +34,10 @@ end
     @test eltype(img) == RGB{N0f8}
     @test img[50,50] == RGB{N0f8}(0.392,0.188,0.196) # value from ImageMagick.jl
 end
+
+@testset "Packbits image" begin
+    filepath = download("http://people.math.sc.edu/Burkardt/data/tif/m83.tif")
+    img = TIFF.load(filepath)
+    @test size(img) == (378, 400)
+    @test eltype(img) == RGB{N0f16}
+end
