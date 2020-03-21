@@ -65,7 +65,6 @@ function Base.read!(io::IOStream, arr::SubArray{T,N,P,I,L}) where {T, N, P <: Bi
     nc = length(read!(io, Bc))
     if length(Bc) > 0 && Bc[end] & Base._msk_end(n) ≠ Bc[end]
         Bc[end] &= Base._msk_end(n) # ensure that the BitArray is not broken
-        throw(DimensionMismatch("read mismatch, found non-zero bits after BitArray length"))
     end
     for i in 1:nc
        Bc[i] = TIFF.reversebits(Bc[i]) 
