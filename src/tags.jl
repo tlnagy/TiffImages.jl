@@ -63,14 +63,14 @@ function Base.read(tf::TiffFile, ::Type{Tag{O}}) where O <: Unsigned
     count = read(tf, O)
     if !(datatype in keys(type_mapping))
         data = read(tf, O)
-        return nothing
+        return Tag(tag, Any, count, data)
     end
     T = type_mapping[datatype]
-    R = T # type to read in as
+    R = ((T == String) | (T == Any)) ? UInt8 : T # type to read in as
 
     # we need to check if the type has any padding because we don't want to
     # include the padding when doing the bswap operation
-    padding = max(bytes(O) - bytes(T) * count, 0)
+    padding = max(bytes(O) - bytes(T) * max(count, 1), 0)
     (padding == 0) && (R = O)
 
     data = read(tf, R)

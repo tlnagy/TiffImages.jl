@@ -135,7 +135,7 @@ end
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {T, N}
     layout = output(tf, ifd)
 
-    rowsperstrip = get(tf, ifd[ROWSPERSTRIP])[1]
+    rowsperstrip = get(tf, getindex(ifd, ROWSPERSTRIP, layout.nrows))[1]
     nstrips = ceil(Int, layout.nrows / rowsperstrip)
 
     strip_nbytes = get(tf, ifd[STRIPBYTECOUNTS])

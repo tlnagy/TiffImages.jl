@@ -51,6 +51,9 @@ function load(filepath)
     else
         if layout.interpretation == PHOTOMETRIC_MINISBLACK
             colortype = Gray{layout.mappedtype}
+            if layout.nsamples > 1
+                trans = view(trans, 1, :, :, :)
+            end
         elseif layout.interpretation == PHOTOMETRIC_RGB
             colortype = RGB{layout.mappedtype}
             trans = view(trans, 1:3, :, :, :)
