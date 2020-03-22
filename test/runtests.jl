@@ -3,13 +3,14 @@ using Documenter
 using FixedPointNumbers
 using Test
 using TIFF
-using TestImages
 
 DocMeta.setdocmeta!(TIFF, :DocTestSetup, :(using TIFF); recursive=true)
 doctest(TIFF)
 
+get_example(name) = download("https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true")
+
 @testset "Gray with ExtraSample" begin
-    filepath = testimage("house.tif", download_only=true)
+    filepath = get_example("house.tif")
     img = TIFF.load(filepath)
     @test size(img) == (512, 512)
     @test eltype(img) == Gray{N0f8}
@@ -20,24 +21,29 @@ doctest(TIFF)
 end
 
 @testset "MRI stack" begin
-    filepath = testimage("mri-stack.tif", download_only=true)
+    filepath = get_example("mri.tif")
     img = TIFF.load(filepath)
-    @test size(img) == (226, 186, 27)
-    @test eltype(img) == Gray{N0f8}
-    @test img[50,50,1] == Gray{N0f8}(0.353) # value from ImageMagick.jl
+    @test size(img) == (128, 128, 27)
+    @test eltype(img) == RGB{N0f16}
 end
 
-@testset "RGB image" begin
-    filepath = testimage("lake_color.tif", download_only=true)
+@testset "Floating point RGB image" begin
+    filepath = get_example("spring.tif")
     img = TIFF.load(filepath)
-    @test size(img) == (512, 512)
-    @test eltype(img) == RGB{N0f8}
-    @test img[50,50] == RGB{N0f8}(0.392,0.188,0.196) # value from ImageMagick.jl
+    @test size(img) == (619, 858)
+    @test eltype(img) == RGB{Float16}
 end
 
 @testset "Packbits image" begin
-    filepath = download("http://people.math.sc.edu/Burkardt/data/tif/m83.tif")
+    filepath = get_example("coffee.tif")
     img = TIFF.load(filepath)
-    @test size(img) == (378, 400)
-    @test eltype(img) == RGB{N0f16}
+    @test size(img) == (378, 504)
+    @test eltype(img) == Gray{N0f8}
+end
+
+@testset "Bilevel image" begin
+    filepath = get_example("capitol.tif")
+    img = TIFF.load(filepath)
+    @test size(img) == (378, 504)
+    @test eltype(img) == Gray{Bool}
 end
