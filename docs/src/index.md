@@ -1,7 +1,26 @@
 # TIFF.jl
 
-WIP
+*Pure-Julia TIFF reader and writer with a focus on correctness* 🧐
 
-```@docs
+TIFF (Tagged Image File Format) is a notoriously flexible file format that is
+very difficult to support properly so why not just link `libtiff` and call it
+a day? Because [Julia developers are
+greedy](https://julialang.org/blog/2012/02/why-we-created-julia/). I wanted to
+design a clean, minimal, and standards-compliant TIFF reader and writer that can
+have the speed and compliance of `libtiff` while adding modern features like
+streaming, out-of-memory support, and fancy color support. I wanted to design it
+to be extensible such that packages like
+[`OMETIFF.jl`](https://github.com/tlnagy/OMETIFF.jl) can hook right in with
+minimal overhead. I wanted to leverage the wonderful Julia Arrays ecosystem to
+do as much lazily and flexibly as possible.
 
-```
+## Features
+
+TIFF.jl supports:
+
+- [x] The TIFF 6.0 baseline spec
+- [x] Thorough testing
+- [x] HDR images stored as 32bit or 64bit floats
+- [x] BigTIFFs
+- [ ] Out-of-memory support (WIP)
+- [ ] Streaming from disk (WIP)
