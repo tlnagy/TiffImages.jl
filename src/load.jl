@@ -8,9 +8,10 @@ function load(filepath)
     nplanes = 0
 
     for ifd in tf
+        load!(tf, ifd)
         push!(ifds, ifd)
 
-        new_layout = output(tf, ifd)
+        new_layout = output(ifd)
 
         # if we detect variance in the format of the IFD data then we can't
         # represent the image as a dense array
@@ -44,8 +45,8 @@ function load(filepath)
     colortype = nothing
     if layout.interpretation == PHOTOMETRIC_PALETTE
         ifd = first(ifds)
-        maxdepth = 2^(get(tf, ifd[BITSPERSAMPLE])[1])-1
-        colors = get(tf, ifd[COLORMAP])
+        maxdepth = 2^(first(ifd[BITSPERSAMPLE].data))-1
+        colors = ifd[COLORMAP].data
         color_map = vec(reinterpret(RGB{N0f16}, reshape(colors, :, 3)'))
         trans = IndirectArray(trans, OffsetArray(color_map, 0:maxdepth))
     else

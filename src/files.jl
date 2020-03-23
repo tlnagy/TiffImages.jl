@@ -77,18 +77,3 @@ Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
 Base.bswap(x::Rational{T}) where {T} = Rational(bswap(x.num), bswap(x.den))
 
 Base.IteratorSize(::TiffFile) = Base.SizeUnknown()
-
-"""
-    do_bswap(file, values) -> Array
-
-If the endianness of file is different than that of the current machine, swap
-the byte order.
-"""
-function do_bswap(file::TiffFile, values::AbstractArray)
-    if file.need_bswap
-        values .= bswap.(values)
-    end
-    values
-end
-
-do_bswap(file::TiffFile, value) = file.need_bswap ? bswap(value) : value

@@ -6,14 +6,25 @@ Base.length(ifd::IFD) = length(ifd.tags)
 Base.keys(ifd::IFD) = keys(ifd.tags)
 Base.iterate(ifd::IFD) = iterate(ifd.tags)
 Base.iterate(ifd::IFD, n::Integer) = iterate(ifd.tags, n)
-Base.getindex(ifd::IFD, key) = getindex(ifd.tags, key)
-Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd.tags, UInt16(key))
+Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
+Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, value, key)
+Base.in(key::TiffTag, v::Base.KeySet{UInt16, Dict{UInt16, Tag{O}}}) where {O} = in(UInt16(key), v)
 
-function Base.getindex(ifd::IFD{O}, key::TiffTag, default::T) where {O, T <: Integer}
+
+function Base.getindex(ifd::IFD{O}, key::UInt16) where {O}
     if UInt16(key) in keys(ifd)
-        return getindex(ifd, key)
+        return getindex(ifd.tags, key)
     else
-        return Tag(UInt16(key), O, O(1), O(default))
+        return Tag(UInt16(key), UInt8, O(1), UInt8[1], true)
+    end
+end
+
+function load!(tf::TiffFile, ifd::IFD)
+    for idx in keys(ifd)
+        tag = ifd[idx]
+        if !tag.loaded
+            ifd[idx] = load(tf, tag)
+        end
     end
 end
 
@@ -80,24 +91,22 @@ struct IFDLayout
     interpretation::PhotometricInterpretations
 end
 
-IFDLayout() = IFDLayout(1,1,1, UInt16, N0f16, PHOTOMETRIC_MINISBLACK)
+function output(ifd::IFD)
+    nrows = Int(first(ifd[IMAGELENGTH].data))
+    ncols = Int(first(ifd[IMAGEWIDTH].data))
 
-function output(tf::TiffFile, ifd::IFD)
-    nrows = Int(get(tf, ifd[IMAGELENGTH])[1])
-    ncols = Int(get(tf, ifd[IMAGEWIDTH])[1])
-
-    samplesperpixel = Int(get(tf, getindex(ifd, SAMPLESPERPIXEL, 1))[1])
-    sampleformats = get(tf, getindex(ifd, SAMPLEFORMAT, 1))
+    samplesperpixel = first(ifd[SAMPLESPERPIXEL].data)
+    sampleformats = ifd[SAMPLEFORMAT].data
 
     if length(sampleformats) == 1 && samplesperpixel > 1
         sampleformats = fill(sampleformats[1], samplesperpixel)
     end
 
-    interpretation = get(tf, ifd[PHOTOMETRIC])[1]
+    interpretation = first(ifd[PHOTOMETRIC].data)
 
-    strip_nbytes = get(tf, ifd[STRIPBYTECOUNTS])
+    strip_nbytes = ifd[STRIPBYTECOUNTS].data
     nbytes = Int(sum(strip_nbytes))
-    bitsperpixel = get(tf, getindex(ifd, BITSPERSAMPLE, 1))
+    bitsperpixel = ifd[BITSPERSAMPLE].data
     rawtypes = Set{DataType}()
     mappedtypes = Set{DataType}()
     for i in 1:samplesperpixel
@@ -113,7 +122,7 @@ function output(tf::TiffFile, ifd::IFD)
     rawtype = first(rawtypes)    
     readtype = rawtype
 
-    compression = CompressionType(get(tf, getindex(ifd, COMPRESSION, 1))[1])
+    compression = CompressionType(first(ifd[COMPRESSION].data))
 
     if compression != COMPRESSION_NONE
         # recalculate nbytes if the data is compressed since the inflated data
@@ -133,12 +142,13 @@ function output(tf::TiffFile, ifd::IFD)
 end
 
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {T, N}
-    layout = output(tf, ifd)
+    layout = output(ifd)
 
-    rowsperstrip = get(tf, getindex(ifd, ROWSPERSTRIP, layout.nrows))[1]
+    rowsperstrip = layout.nrows
+    (ROWSPERSTRIP in keys(ifd)) && (rowsperstrip = first(ifd[ROWSPERSTRIP].data))
     nstrips = ceil(Int, layout.nrows / rowsperstrip)
 
-    strip_nbytes = get(tf, ifd[STRIPBYTECOUNTS])
+    strip_nbytes = ifd[STRIPBYTECOUNTS].data
 
     if layout.compression != COMPRESSION_NONE
         # strip_nbytes is the number of bytes pre-inflation so we need to
@@ -147,9 +157,9 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
         strip_nbytes[end] = (layout.nrows - (rowsperstrip * (nstrips-1))) * layout.ncols
     end
 
-    strip_offsets = get(tf, ifd[STRIPOFFSETS])
+    strip_offsets = ifd[STRIPOFFSETS].data
 
-    planarconfig = get(tf, getindex(ifd, PLANARCONFIG, 1))[1]
+    planarconfig = first(ifd[PLANARCONFIG].data)
     (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
 
     if nstrips > 1
