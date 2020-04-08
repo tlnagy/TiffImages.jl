@@ -65,7 +65,7 @@ function Base.read(tf::TiffFile, ::Type{Tag{O}}) where O <: Unsigned
     end
 
     nbytes = bytes(T) * count
-    if nbytes <= 4
+    if nbytes <= sizeof(O)
         if tf.need_bswap
             reverse!(view(data, 1:nbytes))
         end
