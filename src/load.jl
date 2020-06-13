@@ -1,5 +1,11 @@
-function load(filepath)
-    tf = TiffFile(open(filepath))
+function load(filepath::String; verbose=false)
+    open(filepath) do io
+        load(io; verbose=verbose)
+    end
+end
+
+function load(io::IOStream; verbose=true)
+    tf = TiffFile(io)
 
     isdense = true
     ifds = IFD{offset(tf)}[]
@@ -28,7 +34,8 @@ function load(filepath)
     else
         data = Array{layout.readtype}(undef, layout.nbytes÷sizeof(layout.readtype), nplanes)
     end
-    @showprogress for (idx, ifd) in enumerate(ifds)
+    freq = verbose ? 1 : Inf
+    @showprogress freq for (idx, ifd) in enumerate(ifds)
         read!(view(data, :, idx), tf, ifd)
     end
     data = reinterpret(layout.rawtype, data)
