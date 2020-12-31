@@ -6,6 +6,7 @@ using FixedPointNumbers
 using IndirectArrays
 using OffsetArrays
 using ProgressMeter
+using Base.Iterators
 
 include("enum.jl")
 include("utils.jl")

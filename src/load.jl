@@ -30,47 +30,78 @@ function load(io::IOStream; verbose=true)
         nplanes += 1
     end
     if layout.rawtype == Bool
-        data = BitArray(undef, layout.nbytes*8, nplanes)
+        slice = view(BitArray(undef, layout.nbytes*8), :, 1)
     else
-        data = Array{layout.readtype}(undef, layout.nbytes÷sizeof(layout.readtype), nplanes)
+        slice = Array{layout.readtype}(undef, layout.nbytes÷sizeof(layout.readtype))
     end
+    
+    ifds_iter = Iterators.Stateful(ifds)
+
+    # load first slice
+    ifd = popfirst!(ifds_iter)
+    trans = load(slice, tf, layout, ifd)
+
+    # construct the final realized array from the lazy wrappers
+    data = Array{eltype(trans)}(undef, size(trans)..., nplanes)
+    plane_dim = length(size(data))
+    # set the first plane to the data in trans
+    selectdim(data, plane_dim, 1) .= trans
+
     freq = verbose ? 1 : Inf
-    @showprogress freq for (idx, ifd) in enumerate(ifds)
-        read!(view(data, :, idx), tf, ifd)
-    end
-    data = reinterpret(layout.rawtype, data)
-    trans = reshape(data, :, layout.nrows, nplanes) 
-    if layout.rawtype == Bool
-        trans = view(trans, 1:layout.ncols, 1:layout.nrows, 1:nplanes)
-    end
-    if layout.nsamples > 1
-        trans = PermutedDimsArray(reshape(trans, layout.nsamples, layout.ncols, layout.nrows, nplanes), [1, 3, 2, 4])
-    else
-        trans = PermutedDimsArray(trans, [2, 1, 3])
+    @showprogress freq for (idx, ifd) in enumerate(ifds_iter)
+        trans = load(slice, tf, layout, ifd)
+        selectdim(data, plane_dim, idx+1) .= trans
     end
 
-    colortype = nothing
     if layout.interpretation == PHOTOMETRIC_PALETTE
-        ifd = first(ifds)
         maxdepth = 2^(first(ifd[BITSPERSAMPLE].data))-1
         colors = ifd[COLORMAP].data
         color_map = vec(reinterpret(RGB{N0f16}, reshape(colors, :, 3)'))
-        trans = IndirectArray(trans, OffsetArray(color_map, 0:maxdepth))
+        data = IndirectArray(data, OffsetArray(color_map, 0:maxdepth))
+    end
+
+    close(tf.io)
+    todrop = tuple(findall(size(data) .== 1)...)
+    DenseTaggedImage(dropdims(data, dims=todrop), ifds)
+end
+
+"""
+    load(prealloc, tf, layout, ifd)
+
+Read the raw data from `tf` into `prealloc` and then lazily transform the latter
+based on the information in `layout` and `ifd`. The returned array can later be
+realized to unwrap the lazy transforms.
+"""
+function load(prealloc::AbstractVector, tf::TiffFile, layout::IFDLayout, ifd::IFD)
+    read!(prealloc, tf, ifd)
+
+    data = reinterpret(layout.rawtype, prealloc)
+
+    trans = reshape(data, :, layout.nrows) 
+    if layout.rawtype == Bool
+        trans = view(trans, 1:layout.ncols, 1:layout.nrows)
+    end
+
+    if layout.nsamples > 1
+        trans = PermutedDimsArray(reshape(trans, layout.nsamples, layout.ncols, layout.nrows), [1, 3, 2])
     else
+        trans = PermutedDimsArray(trans, [2, 1])
+    end
+
+    colortype = nothing
+    if layout.interpretation != PHOTOMETRIC_PALETTE
         if layout.interpretation == PHOTOMETRIC_MINISBLACK
             colortype = Gray{layout.mappedtype}
             if layout.nsamples > 1
-                trans = view(trans, 1, :, :, :)
+                trans = view(trans, 1, :, :)
             end
         elseif layout.interpretation == PHOTOMETRIC_RGB
             colortype = RGB{layout.mappedtype}
-            trans = view(trans, 1:3, :, :, :)
+            trans = view(trans, 1:3, :, :)
         else
             error("Given TIFF requests $(layout.interpretation) interpretation, but that's not yet supported")
         end
         trans = reinterpret(colortype, trans)
     end
-    close(tf.io)
-    todrop = tuple(findall(size(trans) .== 1)...)
-    DenseTaggedImage(dropdims(trans, dims=todrop), ifds)
+    trans
 end
