@@ -15,7 +15,7 @@ struct DenseTaggedImage{T, N, O <: Unsigned,AA <: AbstractArray} <: AbstractDens
 end
 
 function DenseTaggedImage(data::AbstractArray{T, 2}, ifd::IFD{O}) where {T, O}
-    DenseTaggedImage{T, 2}(data, IFD{O}[ifd])
+    DenseTaggedImage(data, IFD{O}[ifd])
 end
 
 Base.size(t::DenseTaggedImage) = size(t.data)
