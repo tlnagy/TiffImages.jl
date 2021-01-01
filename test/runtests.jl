@@ -1,6 +1,8 @@
 using ColorTypes
+using ColorVectorSpace
 using Documenter
 using FixedPointNumbers
+using Statistics
 using Test
 using TIFF
 
@@ -25,6 +27,18 @@ end
     img = TIFF.load(filepath)
     @test size(img) == (128, 128, 27)
     @test eltype(img) == RGB{N0f16}
+
+    @testset "Multiple planes" begin
+        # test slice based access
+        @test Gray(mean(img[:, :, 2])) == Gray{Float32}(0.25676906f0)
+
+        # make sure IFDs are included if whole slice is grabbed
+        @test length(img[:, :, 2].ifds) == 1
+        @test length(img[:, :, 2:5].ifds) == 4
+
+        # make sure that subslicing in XY drops IFD info
+        @test typeof(img[:, 50:60, 27]) == Array{RGB{Normed{UInt16,16}},2}
+    end
 end
 
 @testset "Floating point RGB image" begin
