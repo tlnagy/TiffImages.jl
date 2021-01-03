@@ -19,7 +19,6 @@ get_example(name) = download("https://github.com/tlnagy/exampletiffs/blob/master
     @test img[50,50] == Gray{N0f8}(0.804) # value from ImageMagick.jl
     img[50:300, 50:150] .= 0.0
     @test img[50, 50] == Gray{N0f8}(0.0)
-0
 end
 
 @testset "MRI stack" begin
@@ -69,4 +68,24 @@ end
     @test size(img) == (167, 439, 35)
     expected_rng = reinterpret.(Q0f7, Int8.((-1, 96)))
     @test extrema(img[:, :, 1]) == expected_rng
+end
+
+@testset "Issue #12" begin
+    @testset "Big endian striped file" begin
+        filepath = get_example("flagler.tif")
+        img = TIFF.load(filepath)
+
+        # verify that strip offsets are correctly bswapped for endianness
+        img_stripoffsets = Int.(img.ifds[1][TIFF.STRIPOFFSETS].data)
+        @test img_stripoffsets == [8, 129848, 259688, 389528]
+    end
+
+    @testset "Little endian striped file" begin
+        filepath = get_example("house.tif")
+        img = TIFF.load(filepath)
+
+        # verify that strip offsets are correctly bswapped for endianness
+        img_stripoffsets = Int.(img.ifds[1][TIFF.STRIPOFFSETS].data)
+        @test issorted(img_stripoffsets)
+    end
 end

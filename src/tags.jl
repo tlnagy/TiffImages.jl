@@ -16,8 +16,13 @@ function load(tf::TiffFile{O}, t::Tag{O}) where {O}
     pos = position(tf.io)
     seek(tf, loc)
     read!(tf, data)
-    if tf.need_bswap
+
+    # if this datatype is comprised of multiple bytes and this file needs to be
+    # bitswapped then we'll need to reverse the byte order inside each datatype
+    # unit 
+    if tf.need_bswap && bytes(t.datatype) >= 2
         reverse!(data)
+        data .= Array(reinterpret(UInt8, Array{t.datatype}(reverse(reinterpret(t.datatype, data)))))
     end
     seek(tf, pos)
 
