@@ -115,7 +115,7 @@ function output(ifd::IFD)
         if rawtype <: Unsigned
             push!(mappedtypes, Normed{rawtype, sizeof(rawtype)*8})
         elseif rawtype <: Signed
-            push!(mappedtypes, Fixed{rawtype, sizeof(rawtype)*8})
+            push!(mappedtypes, Fixed{rawtype, sizeof(rawtype)*8-1})
         else
             push!(mappedtypes, rawtype)
         end
