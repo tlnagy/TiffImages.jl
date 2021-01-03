@@ -61,3 +61,12 @@ end
     @test size(img) == (378, 504)
     @test eltype(img) == Gray{Bool}
 end
+
+@testset "Signed integer type" begin
+    filepath = get_example("4D-series.ome.tif")
+    img = TIFF.load(filepath)
+    
+    @test size(img) == (167, 439, 35)
+    expected_rng = reinterpret.(Q0f7, Int8.((-1, 96)))
+    @test extrema(img[:, :, 1]) == expected_rng
+end
