@@ -5,6 +5,7 @@ using FileIO
 using FixedPointNumbers
 using IndirectArrays
 using OffsetArrays
+using OrderedCollections
 using ProgressMeter
 using Base.Iterators
 

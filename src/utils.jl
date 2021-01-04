@@ -85,7 +85,7 @@ end
 
 # using rephorm's table from
 # https://github.com/rephorm/TIFF.jl/blob/master/tiff.jl#L30
-const type_mapping = Dict(
+const tiff_to_julian = Dict(
   0x0001 => UInt8,            # CHAR
   0x0002 => String,           # ASCII
   0x0003 => UInt16,           # SHORT
@@ -104,6 +104,23 @@ const type_mapping = Dict(
   0x0012 => UInt64,           # IFD8
 )
 
+const julian_to_tiff = Dict(
+    UInt8               => 0x0001,   # CHAR
+    String              => 0x0002,   # ASCII
+    UInt16              => 0x0003,   # SHORT
+    UInt32              => 0x0004,   # LONG
+    Rational{UInt32}    => 0x0005,   # RATIONAL
+    Int8                => 0x0006,   # SBYTE
+    Any                 => 0x0007,   # UNDEFINED
+    Int16               => 0x0008,   # SSHORT
+    Int32               => 0x0009,   # SLONG
+    Rational{Int32}     => 0x000a,   # SRATIONAL
+    Float32             => 0x000b,   # FLOAT
+    Float64             => 0x000c,   # DOUBLE
+    UInt64              => 0x0010,   # LONG8
+    Int64               => 0x0011,   # SLONG8
+)
+
 # sampleformat, bitspersample => Julian type
 const rawtype_mapping = Dict(
     (SAMPLEFORMAT_UINT, 1) => Bool,
@@ -111,7 +128,6 @@ const rawtype_mapping = Dict(
     (SAMPLEFORMAT_UINT, 16) => UInt16,
     (SAMPLEFORMAT_UINT, 32) => UInt32,
     (SAMPLEFORMAT_UINT, 64) => UInt64,
-    (SAMPLEFORMAT_INT, 1) => Bool,
     (SAMPLEFORMAT_INT, 8) => Int8,
     (SAMPLEFORMAT_INT, 16) => Int16,
     (SAMPLEFORMAT_INT, 32) => Int32,

@@ -1,5 +1,5 @@
 struct IFD{O <: Unsigned}
-    tags::Dict{UInt16, Tag{O}}
+    tags::OrderedDict{UInt16, Tag{O}}
 end
 
 Base.length(ifd::IFD) = length(ifd.tags)
@@ -29,9 +29,9 @@ function load!(tf::TiffFile, ifd::IFD)
 end
 
 function Base.show(io::IO, ifd::IFD)
-    println(io, "IFD, with tags: (* indicates remote data)")
+    print(io, "IFD, with tags: (* indicates remote data)")
     for tag in sort(collect(keys(ifd)))
-        println(io, "\t", ifd[tag])
+        print(io, "\n\t", ifd[tag])
     end
 end
 
@@ -39,11 +39,13 @@ function Base.read(tf::TiffFile, ::Type{IFD{O}}) where O <: Unsigned
     # Regular TIFF's use 16bits instead of 32 bits for entry data
     N = O == UInt32 ? read(tf, UInt16) : read(tf, O)
 
-    entries = Dict{UInt16, Tag{O}}()
+    println(N) #test
 
-    k = keys(type_mapping)
+    entries = OrderedDict{UInt16, Tag{O}}()
+
     for i in 1:N
         tag = read(tf, Tag{O})
+        println(tag)
         entries[tag.tag] = tag
     end
 
@@ -176,4 +178,39 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
         seek(tf, strip_offsets[1])
         read!(tf, target, layout.compression)
     end
+end
+
+function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
+    N = length(ifd)
+    O == UInt32 ? write(tf, UInt16(N)) : write(tf, UInt64(N))
+
+    # keep track of which tags are too large to fit in the IFD slot and need a
+    # remote location for their data
+    remotedata = OrderedDict{Tag, Vector{Int}}()
+    for (key, tag) in ifd
+        if !write(tf, tag)
+            remotedata[tag] = [position(tf.io)]
+        end
+    end
+
+    # end position, write a zero by default, but this should be updated if any
+    # more IFDs are written
+    ifd_end_pos = position(tf.io)
+    write(tf, O(0))
+
+    for (tag, poses) in remotedata
+        data_pos = position(tf.io)
+        write(tf, tag.data)
+        push!(poses, data_pos)      
+    end
+
+    for (tag, poses) in remotedata
+        orig_pos, data_pos = poses
+        seek(tf, orig_pos)
+        write(tf, tag, data_pos)
+    end
+
+    seek(tf, ifd_end_pos)
+    
+    return ifd_end_pos
 end

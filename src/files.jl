@@ -15,19 +15,46 @@ mutable struct TiffFile{O <: Unsigned}
 
     """Whether this file has a different endianness than the host computer"""
     need_bswap::Bool
+end
 
-    function TiffFile(io::Stream)
-        seekstart(io)
-        filepath = extract_filename(io)
-        bs = need_bswap(io)
-        offset_size = offsetsize(io)
-        first_offset_raw = read(io, offset_size)
-        first_offset = Int(bs ? bswap(first_offset_raw) : first_offset_raw)
-        new{offset_size}(filepath, io, first_offset, bs)
+function TiffFile(offset_size::Type{O}) where O <: Unsigned
+    TiffFile{offset_size}("", Stream(format"TIFF", IOBuffer()), -1, false)
+end
+
+function Base.read(io::Stream, ::Type{TiffFile})
+    seekstart(io)
+    filepath = extract_filename(io)
+    bs = need_bswap(io)
+    offset_size = offsetsize(io)
+    first_offset_raw = read(io, offset_size)
+    first_offset = Int(bs ? bswap(first_offset_raw) : first_offset_raw)
+    TiffFile{offset_size}(filepath, io, first_offset, bs)
+end
+
+Base.read(io::IOStream, t::Type{TiffFile}) = read(Stream(format"TIFF", io, extract_filename(io)), t)
+
+function Base.write(file::TiffFile{O}) where O
+    seekstart(file.io)
+    
+    if ENDIAN_BOM == 0x04030201 #little endian
+        write(file.io, "II")
+    else
+        write(file.io, "MM")
+    end
+
+    if O == UInt32
+        write(file.io, UInt16(42)) # regular tiff
+        write(file.io, UInt32(8)) # first offset is right after header
+    elseif O == UInt64
+        write(file.io, UInt16(43)) # big tiff
+        write(file.io, UInt16(8)) # byte size of offsets
+        write(file.io, UInt16(0)) # constant
+        write(file.io, UInt64(16)) # first offset is right after header
+    else
+        error("Unknown offset size")
     end
 end
 
-TiffFile(io::IOStream) = TiffFile(Stream(format"TIFF", io, extract_filename(io)))
 
 """
     offset(file)
@@ -72,8 +99,37 @@ function Base.read!(io::IOStream, arr::SubArray{T,N,P,I,L}) where {T, N, P <: Bi
     arr
 end
 
+Base.write(file::TiffFile, t) = write(file.io.io, t)
+
 Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
 
 Base.bswap(x::Rational{T}) where {T} = Rational(bswap(x.num), bswap(x.den))
 
 Base.IteratorSize(::TiffFile) = Base.SizeUnknown()
+
+function write_test(img)
+    tf = TiffFile(UInt32)
+    tf.io = Stream(format"TIFF", open("/home/tlnagy/Documents/exampletiffs/coffee_new.tif", "w"))
+    write(tf)
+    data_pos = position(tf.io)
+    @show data_pos
+    write(tf, reinterpret(UInt8, img.data'))
+    ifd_pos = position(tf.io)
+    @show ifd_pos
+    seek(tf.io, 4)
+    write(tf, UInt32(ifd_pos))
+    ifd = img.ifds[1]
+    ifd[UInt16(STRIPOFFSETS)] = Tag{UInt32}(UInt16(STRIPOFFSETS), UInt32, UInt32(1), Array(reinterpret(UInt8, [UInt32(data_pos)])), true)
+    ifd[UInt16(STRIPBYTECOUNTS)] = Tag{UInt32}(UInt16(STRIPBYTECOUNTS), UInt32, UInt32(1), Array(reinterpret(UInt8, [UInt32(ifd_pos-data_pos)])), true)
+    ifd[UInt16(COMPRESSION)] = TIFF.Tag{UInt32}(UInt16(TIFF.COMPRESSION), UInt16, 1, [0x01, 0x00], true)
+    sort!(ifd.tags)
+    println(ifd_pos - data_pos)
+    seek(tf.io, ifd_pos)
+    @show length(ifd)
+    end_pos = write(tf, ifd)
+    @show end_pos
+    @show position(tf.io)
+    seekend(tf.io)
+    @show position(tf.io)
+    close(tf.io)
+end
