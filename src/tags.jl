@@ -6,6 +6,17 @@ struct Tag{O <: Unsigned}
     loaded::Bool
 end
 
+function Tag{O}(tag::TiffTag, data::String) where {O <: Unsigned}
+    Tag(UInt16(tag), String, O(length(data)), Array{UInt8}(data), true)
+end
+
+function Tag{O}(tag::TiffTag, data::T) where {O <: Unsigned, T <: Number}
+    bitarr = Array(reinterpret(UInt8, [data]))
+    Tag(UInt16(tag), T, O(length(bitarr)), bitarr, true)
+end
+
+Tag{O}(tag::TiffTag, data::T) where {O <: Unsigned, T <: Enum} = Tag{O}(tag, UInt16(data))
+
 function load(tf::TiffFile{O}, t::Tag{O}) where {O}
     (t.loaded) && return t
 

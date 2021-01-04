@@ -7,9 +7,14 @@ Base.keys(ifd::IFD) = keys(ifd.tags)
 Base.iterate(ifd::IFD) = iterate(ifd.tags)
 Base.iterate(ifd::IFD, n::Integer) = iterate(ifd.tags, n)
 Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
-Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, value, key)
 Base.in(key::TiffTag, v::Base.KeySet{UInt16, Dict{UInt16, Tag{O}}}) where {O} = in(UInt16(key), v)
 
+Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, value, key)
+Base.setindex!(ifd::IFD, value::Tag, key::TiffTag) = setindex!(ifd.tags, value, UInt16(key))
+
+function Base.setindex!(ifd::IFD{O}, value, key::TiffTag) where {O <: Unsigned}
+    setindex!(ifd, Tag{O}(key, value), UInt16(key))
+end
 
 function Base.getindex(ifd::IFD{O}, key::UInt16) where {O}
     if UInt16(key) in keys(ifd)
@@ -38,8 +43,6 @@ end
 function Base.read(tf::TiffFile, ::Type{IFD{O}}) where O <: Unsigned
     # Regular TIFF's use 16bits instead of 32 bits for entry data
     N = O == UInt32 ? read(tf, UInt16) : read(tf, O)
-
-    println(N) #test
 
     entries = OrderedDict{UInt16, Tag{O}}()
 
