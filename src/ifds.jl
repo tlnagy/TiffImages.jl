@@ -191,8 +191,9 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     # remote location for their data
     remotedata = OrderedDict{Tag, Vector{Int}}()
     for (key, tag) in ifd
+        pos = position(tf.io)
         if !write(tf, tag)
-            remotedata[tag] = [position(tf.io)]
+            remotedata[tag] = [pos]
         end
     end
 
