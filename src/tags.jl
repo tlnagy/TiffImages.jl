@@ -135,8 +135,6 @@ function Base.write(tf::TiffFile{O}, t::Tag{O}) where O <: Unsigned
     # if the data are too large to fit then we'll need to skip writing this tag
     # for now until we know the length of the entire IFD
     if t.loaded && length(t.data)*bytes(t.datatype) > sizeof(O)
-        @info "This data will have to be remote"
-
         _writeblank(tf)
         return false
     end

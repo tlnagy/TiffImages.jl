@@ -2,6 +2,8 @@ struct IFD{O <: Unsigned}
     tags::OrderedDict{UInt16, Tag{O}}
 end
 
+IFD(o::Type{O}) where {O <: Unsigned} = IFD{O}(OrderedDict{UInt16, Tag{O}}())
+
 Base.length(ifd::IFD) = length(ifd.tags)
 Base.keys(ifd::IFD) = keys(ifd.tags)
 Base.iterate(ifd::IFD) = iterate(ifd.tags)
@@ -40,7 +42,7 @@ function Base.show(io::IO, ifd::IFD)
     end
 end
 
-function Base.read(tf::TiffFile, ::Type{IFD{O}}) where O <: Unsigned
+function Base.read(tf::TiffFile{O}, ::Type{IFD}) where O <: Unsigned
     # Regular TIFF's use 16bits instead of 32 bits for entry data
     N = O == UInt32 ? read(tf, UInt16) : read(tf, O)
 
@@ -48,7 +50,6 @@ function Base.read(tf::TiffFile, ::Type{IFD{O}}) where O <: Unsigned
 
     for i in 1:N
         tag = read(tf, Tag{O})
-        println(tag)
         entries[tag.tag] = tag
     end
 
@@ -56,10 +57,9 @@ function Base.read(tf::TiffFile, ::Type{IFD{O}}) where O <: Unsigned
     IFD(entries), next_ifd
 end
 
-
 function Base.iterate(file::TiffFile{O}) where {O}
     seek(file.io, file.first_offset)
-    iterate(file, (read(file, IFD{O})))
+    iterate(file, (read(file, IFD)))
 end
 
 """
@@ -79,7 +79,7 @@ function Base.iterate(file::TiffFile, state::Tuple{Union{IFD{O}, Nothing}, Int})
     (next_ifd_offset <= 0) && return (curr_ifd, (nothing, 0))
 
     seek(file.io, next_ifd_offset)
-    next_ifd, next_ifd_offset = read(file, IFD{O})
+    next_ifd, next_ifd_offset = read(file, IFD)
 
     return (curr_ifd, (next_ifd, next_ifd_offset))
 end
@@ -186,6 +186,8 @@ end
 function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     N = length(ifd)
     O == UInt32 ? write(tf, UInt16(N)) : write(tf, UInt64(N))
+
+    sort!(ifd.tags)
 
     # keep track of which tags are too large to fit in the IFD slot and need a
     # remote location for their data
