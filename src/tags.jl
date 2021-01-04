@@ -56,7 +56,9 @@ function Base.getproperty(t::Tag{O}, sym::Symbol) where {O}
     elseif isbitstype(T)
         converted = reinterpret(t.datatype, data)
     elseif T == String
-        converted = String(data)
+        # copy is needed so that the string constructor doesn't edit the
+        # underlying data
+        converted = String(copy(data))
     else
         error("Unexpected tag type")
     end
@@ -105,12 +107,14 @@ function Base.show(io::IO, t::Tag{O}) where {O}
         print(CompressionType(first(t.data)))
     else
         if t.loaded
-            if length(t.data) >= 1
-                try
-                    print(first(t.data))
-                catch
-                    println("%%%%%%%", length(t.data), "%%%%%%%%%")
+            if t.count > 1 
+                if t.datatype == String
+                    print("\"", first(t.data, 20), "\"")
+                else
+                    print("[", join(t.data[1:min(5, end)], ", "), (length(t.data) > 5) ? ", ..." : "", "]")
                 end
+            elseif t.count == 1
+                print(first(t.data))
             else
                 print("""\"\"""")
             end
