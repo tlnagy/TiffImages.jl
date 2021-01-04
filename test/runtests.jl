@@ -89,3 +89,7 @@ end
         @test issorted(img_stripoffsets)
     end
 end
+
+@testset "Writing" begin
+    include("writer.jl")
+end
