@@ -12,7 +12,12 @@ end
 
 function Tag{O}(tag::TiffTag, data::T) where {O <: Unsigned, T <: Number}
     bitarr = Array(reinterpret(UInt8, [data]))
-    Tag(UInt16(tag), T, O(length(bitarr)), bitarr, true)
+    n = length(bitarr)
+    # pad to match the read function
+    if length(bitarr) < sizeof(O)
+        append!(bitarr, fill(0x00, sizeof(O) - length(bitarr)))
+    end
+    Tag(UInt16(tag), T, O(n / bytes(T)), bitarr, true)
 end
 
 Tag{O}(tag::TiffTag, data::T) where {O <: Unsigned, T <: Enum} = Tag{O}(tag, UInt16(data))
