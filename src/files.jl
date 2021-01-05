@@ -15,19 +15,49 @@ mutable struct TiffFile{O <: Unsigned}
 
     """Whether this file has a different endianness than the host computer"""
     need_bswap::Bool
-
-    function TiffFile(io::Stream)
-        seekstart(io)
-        filepath = extract_filename(io)
-        bs = need_bswap(io)
-        offset_size = offsetsize(io)
-        first_offset_raw = read(io, offset_size)
-        first_offset = Int(bs ? bswap(first_offset_raw) : first_offset_raw)
-        new{offset_size}(filepath, io, first_offset, bs)
-    end
 end
 
-TiffFile(io::IOStream) = TiffFile(Stream(format"TIFF", io, extract_filename(io)))
+function TiffFile(offset_size::Type{O}) where O <: Unsigned
+    TiffFile{offset_size}("", Stream(format"TIFF", IOBuffer()), -1, false)
+end
+
+function Base.read(io::Stream, ::Type{TiffFile})
+    seekstart(io)
+    filepath = extract_filename(io)
+    bs = need_bswap(io)
+    offset_size = offsetsize(io)
+    first_offset_raw = read(io, offset_size)
+    first_offset = Int(bs ? bswap(first_offset_raw) : first_offset_raw)
+    TiffFile{offset_size}(filepath, io, first_offset, bs)
+end
+
+Base.read(io::IOStream, t::Type{TiffFile}) = read(Stream(format"TIFF", io, extract_filename(io)), t)
+
+function Base.write(file::TiffFile{O}) where O
+    seekstart(file.io)
+    
+    if ENDIAN_BOM == 0x04030201 #little endian
+        write(file.io, "II")
+    else
+        write(file.io, "MM")
+    end
+
+    ifd_pos = 4 # position where the offset info is
+    if O == UInt32
+        write(file.io, UInt16(42)) # regular tiff
+        write(file.io, UInt32(8)) # first offset is right after header
+    elseif O == UInt64
+        write(file.io, UInt16(43)) # big tiff
+        write(file.io, UInt16(8)) # byte size of offsets
+        write(file.io, UInt16(0)) # constant
+        ifd_pos = position(file.io)
+        write(file.io, UInt64(16)) # first offset is right after header
+    else
+        error("Unknown offset size")
+    end
+    ifd_pos
+end
+
 
 """
     offset(file)
@@ -71,6 +101,8 @@ function Base.read!(io::IOStream, arr::SubArray{T,N,P,I,L}) where {T, N, P <: Bi
     end
     arr
 end
+
+Base.write(file::TiffFile, t) = write(file.io.io, t)
 
 Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
 

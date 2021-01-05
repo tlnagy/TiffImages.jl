@@ -1,15 +1,22 @@
 struct IFD{O <: Unsigned}
-    tags::Dict{UInt16, Tag{O}}
+    tags::OrderedDict{UInt16, Tag{O}}
 end
+
+IFD(o::Type{O}) where {O <: Unsigned} = IFD{O}(OrderedDict{UInt16, Tag{O}}())
 
 Base.length(ifd::IFD) = length(ifd.tags)
 Base.keys(ifd::IFD) = keys(ifd.tags)
 Base.iterate(ifd::IFD) = iterate(ifd.tags)
 Base.iterate(ifd::IFD, n::Integer) = iterate(ifd.tags, n)
 Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
-Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, value, key)
 Base.in(key::TiffTag, v::Base.KeySet{UInt16, Dict{UInt16, Tag{O}}}) where {O} = in(UInt16(key), v)
 
+Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, value, key)
+Base.setindex!(ifd::IFD, value::Tag, key::TiffTag) = setindex!(ifd.tags, value, UInt16(key))
+
+function Base.setindex!(ifd::IFD{O}, value, key::TiffTag) where {O <: Unsigned}
+    setindex!(ifd, Tag{O}(key, value), UInt16(key))
+end
 
 function Base.getindex(ifd::IFD{O}, key::UInt16) where {O}
     if UInt16(key) in keys(ifd)
@@ -29,19 +36,18 @@ function load!(tf::TiffFile, ifd::IFD)
 end
 
 function Base.show(io::IO, ifd::IFD)
-    println(io, "IFD, with tags: (* indicates remote data)")
+    print(io, "IFD, with tags: (* indicates remote data)")
     for tag in sort(collect(keys(ifd)))
-        println(io, "\t", ifd[tag])
+        print(io, "\n\t", ifd[tag])
     end
 end
 
-function Base.read(tf::TiffFile, ::Type{IFD{O}}) where O <: Unsigned
+function Base.read(tf::TiffFile{O}, ::Type{IFD}) where O <: Unsigned
     # Regular TIFF's use 16bits instead of 32 bits for entry data
     N = O == UInt32 ? read(tf, UInt16) : read(tf, O)
 
-    entries = Dict{UInt16, Tag{O}}()
+    entries = OrderedDict{UInt16, Tag{O}}()
 
-    k = keys(type_mapping)
     for i in 1:N
         tag = read(tf, Tag{O})
         entries[tag.tag] = tag
@@ -51,10 +57,9 @@ function Base.read(tf::TiffFile, ::Type{IFD{O}}) where O <: Unsigned
     IFD(entries), next_ifd
 end
 
-
 function Base.iterate(file::TiffFile{O}) where {O}
     seek(file.io, file.first_offset)
-    iterate(file, (read(file, IFD{O})))
+    iterate(file, (read(file, IFD)))
 end
 
 """
@@ -74,7 +79,7 @@ function Base.iterate(file::TiffFile, state::Tuple{Union{IFD{O}, Nothing}, Int})
     (next_ifd_offset <= 0) && return (curr_ifd, (nothing, 0))
 
     seek(file.io, next_ifd_offset)
-    next_ifd, next_ifd_offset = read(file, IFD{O})
+    next_ifd, next_ifd_offset = read(file, IFD)
 
     return (curr_ifd, (next_ifd, next_ifd_offset))
 end
@@ -176,4 +181,42 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
         seek(tf, strip_offsets[1])
         read!(tf, target, layout.compression)
     end
+end
+
+function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
+    N = length(ifd)
+    O == UInt32 ? write(tf, UInt16(N)) : write(tf, UInt64(N))
+
+    sort!(ifd.tags)
+
+    # keep track of which tags are too large to fit in the IFD slot and need a
+    # remote location for their data
+    remotedata = OrderedDict{Tag, Vector{Int}}()
+    for (key, tag) in ifd
+        pos = position(tf.io)
+        if !write(tf, tag)
+            remotedata[tag] = [pos]
+        end
+    end
+
+    # end position, write a zero by default, but this should be updated if any
+    # more IFDs are written
+    ifd_end_pos = position(tf.io)
+    write(tf, O(0))
+
+    for (tag, poses) in remotedata
+        data_pos = position(tf.io)
+        write(tf, tag.data)
+        push!(poses, data_pos)      
+    end
+
+    for (tag, poses) in remotedata
+        orig_pos, data_pos = poses
+        seek(tf, orig_pos)
+        write(tf, tag, data_pos)
+    end
+
+    seek(tf, ifd_end_pos)
+    
+    return ifd_end_pos
 end

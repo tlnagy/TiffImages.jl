@@ -5,7 +5,7 @@ function load(filepath::String; verbose=false)
 end
 
 function load(io::IOStream; verbose=true)
-    tf = TiffFile(io)
+    tf = read(io, TiffFile)
 
     isdense = true
     ifds = IFD{offset(tf)}[]
