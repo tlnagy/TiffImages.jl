@@ -9,7 +9,8 @@ Base.keys(ifd::IFD) = keys(ifd.tags)
 Base.iterate(ifd::IFD) = iterate(ifd.tags)
 Base.iterate(ifd::IFD, n::Integer) = iterate(ifd.tags, n)
 Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
-Base.in(key::TiffTag, v::Base.KeySet{UInt16, Dict{UInt16, Tag{O}}}) where {O} = in(UInt16(key), v)
+Base.in(key::TiffTag, v::IFD) = in(UInt16(key), v)
+Base.in(key::UInt16, v::IFD) = in(key, keys(v))
 
 Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, value, key)
 Base.setindex!(ifd::IFD, value::Tag, key::TiffTag) = setindex!(ifd.tags, value, UInt16(key))
@@ -18,13 +19,7 @@ function Base.setindex!(ifd::IFD{O}, value, key::TiffTag) where {O <: Unsigned}
     setindex!(ifd, Tag{O}(key, value), UInt16(key))
 end
 
-function Base.getindex(ifd::IFD{O}, key::UInt16) where {O}
-    if UInt16(key) in keys(ifd)
-        return getindex(ifd.tags, key)
-    else
-        return Tag(UInt16(key), UInt8, O(1), UInt8[1], true)
-    end
-end
+Base.getindex(ifd::IFD{O}, key::UInt16) where {O} = getindex(ifd.tags, key)
 
 function load!(tf::TiffFile, ifd::IFD)
     for idx in keys(ifd)
@@ -101,10 +96,9 @@ function output(ifd::IFD)
     ncols = Int(first(ifd[IMAGEWIDTH].data))
 
     samplesperpixel = first(ifd[SAMPLESPERPIXEL].data)
-    sampleformats = ifd[SAMPLEFORMAT].data
-
-    if length(sampleformats) == 1 && samplesperpixel > 1
-        sampleformats = fill(sampleformats[1], samplesperpixel)
+    sampleformats = fill(UInt16(0x01), samplesperpixel)
+    if SAMPLEFORMAT in ifd
+        sampleformats = ifd[SAMPLEFORMAT].data
     end
 
     interpretation = first(ifd[PHOTOMETRIC].data)
@@ -166,8 +160,10 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
 
     strip_offsets = ifd[STRIPOFFSETS].data
 
-    planarconfig = first(ifd[PLANARCONFIG].data)
-    (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
+    if PLANARCONFIG in ifd
+        planarconfig = first(ifd[PLANARCONFIG].data)
+        (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
+    end
 
     if nstrips > 1
         startbyte = 1
