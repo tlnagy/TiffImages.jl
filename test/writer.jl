@@ -62,3 +62,14 @@ end
 
     @test all(ifd .== read_ifd)
 end
+
+@testset "image" begin
+    filepath = get_example("house.tif")
+    img = TIFF.load(filepath)
+
+    img2 = TIFF.DenseTaggedImage(Gray{Float64}.(img));
+    path, io = mktemp()
+    write(io, img2)
+    img3 = TIFF.load(path)
+    @test eltype(img3) == Gray{Float64}
+end
