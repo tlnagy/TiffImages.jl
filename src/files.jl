@@ -42,6 +42,7 @@ function Base.write(file::TiffFile{O}) where O
         write(file.io, "MM")
     end
 
+    ifd_pos = 4 # position where the offset info is
     if O == UInt32
         write(file.io, UInt16(42)) # regular tiff
         write(file.io, UInt32(8)) # first offset is right after header
@@ -49,10 +50,12 @@ function Base.write(file::TiffFile{O}) where O
         write(file.io, UInt16(43)) # big tiff
         write(file.io, UInt16(8)) # byte size of offsets
         write(file.io, UInt16(0)) # constant
+        ifd_pos = position(tf.io)
         write(file.io, UInt64(16)) # first offset is right after header
     else
         error("Unknown offset size")
     end
+    ifd_pos
 end
 
 
@@ -106,30 +109,3 @@ Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
 Base.bswap(x::Rational{T}) where {T} = Rational(bswap(x.num), bswap(x.den))
 
 Base.IteratorSize(::TiffFile) = Base.SizeUnknown()
-
-function write_test(img)
-    tf = TiffFile(UInt32)
-    tf.io = Stream(format"TIFF", open("/home/tlnagy/Documents/exampletiffs/coffee_new.tif", "w"))
-    write(tf)
-    data_pos = position(tf.io)
-    @show data_pos
-    write(tf, reinterpret(UInt8, img.data'))
-    ifd_pos = position(tf.io)
-    @show ifd_pos
-    seek(tf.io, 4)
-    write(tf, UInt32(ifd_pos))
-    ifd = img.ifds[1]
-    ifd[UInt16(STRIPOFFSETS)] = Tag{UInt32}(UInt16(STRIPOFFSETS), UInt32, UInt32(1), Array(reinterpret(UInt8, [UInt32(data_pos)])), true)
-    ifd[UInt16(STRIPBYTECOUNTS)] = Tag{UInt32}(UInt16(STRIPBYTECOUNTS), UInt32, UInt32(1), Array(reinterpret(UInt8, [UInt32(ifd_pos-data_pos)])), true)
-    ifd[UInt16(COMPRESSION)] = TIFF.Tag{UInt32}(UInt16(TIFF.COMPRESSION), UInt16, 1, [0x01, 0x00], true)
-    sort!(ifd.tags)
-    println(ifd_pos - data_pos)
-    seek(tf.io, ifd_pos)
-    @show length(ifd)
-    end_pos = write(tf, ifd)
-    @show end_pos
-    @show position(tf.io)
-    seekend(tf.io)
-    @show position(tf.io)
-    close(tf.io)
-end

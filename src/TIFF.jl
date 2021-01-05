@@ -6,8 +6,11 @@ using FixedPointNumbers
 using IndirectArrays
 using OffsetArrays
 using OrderedCollections
+using PkgVersion
 using ProgressMeter
 using Base.Iterators
+
+const PKGVERSION = @PkgVersion.Version 0
 
 include("enum.jl")
 include("utils.jl")

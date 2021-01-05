@@ -7,17 +7,24 @@ struct Tag{O <: Unsigned}
 end
 
 function Tag{O}(tag::TiffTag, data::String) where {O <: Unsigned}
-    Tag(UInt16(tag), String, O(length(data)), Array{UInt8}(data), true)
+    Tag(UInt16(tag), String, O(length(data)+1), Array{UInt8}(data*"\0"), true)
 end
 
 function Tag{O}(tag::TiffTag, data::T) where {O <: Unsigned, T <: Number}
-    bitarr = Array(reinterpret(UInt8, [data]))
-    n = length(bitarr)
+    Tag{O}(tag, Array(reinterpret(UInt8, [data])), T)
+end
+
+function Tag{O}(tag::TiffTag, data::Array{T}) where {O <: Unsigned, T <: Number}
+    Tag{O}(tag, Array(reinterpret(UInt8, data)), T)
+end
+
+function Tag{O}(tag::TiffTag, data::Array{UInt8}, T::DataType) where {O <: Unsigned}
+    n = length(data)
     # pad to match the read function
-    if length(bitarr) < sizeof(O)
-        append!(bitarr, fill(0x00, sizeof(O) - length(bitarr)))
+    if length(data) < sizeof(O)
+        append!(data, fill(0x00, sizeof(O) - length(data)))
     end
-    Tag(UInt16(tag), T, O(n / bytes(T)), bitarr, true)
+    Tag(UInt16(tag), T, O(n / bytes(T)), data, true)
 end
 
 Tag{O}(tag::TiffTag, data::T) where {O <: Unsigned, T <: Enum} = Tag{O}(tag, UInt16(data))
