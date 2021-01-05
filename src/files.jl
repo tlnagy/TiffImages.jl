@@ -50,7 +50,7 @@ function Base.write(file::TiffFile{O}) where O
         write(file.io, UInt16(43)) # big tiff
         write(file.io, UInt16(8)) # byte size of offsets
         write(file.io, UInt16(0)) # constant
-        ifd_pos = position(tf.io)
+        ifd_pos = position(file.io)
         write(file.io, UInt64(16)) # first offset is right after header
     else
         error("Unknown offset size")

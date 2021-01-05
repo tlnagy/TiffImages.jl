@@ -84,3 +84,15 @@ end
     img3 = TIFF.load(path)
     @test eltype(img3) == RGB{Float64}
 end
+
+@testset "BigTIFF saving" begin
+    filepath = get_example("house.tif")
+    img = TIFF.load(filepath)
+
+    ifd = TIFF._constructifd(img.data, UInt64);
+    img2 = TIFF.DenseTaggedImage(img.data, ifd)
+    path, io = mktemp()
+    write(io, img2)
+    img3 = TIFF.load(path)
+    @test eltype(img3) == Gray{N0f8}
+end
