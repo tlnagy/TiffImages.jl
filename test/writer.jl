@@ -63,13 +63,24 @@ end
     @test all(ifd .== read_ifd)
 end
 
-@testset "image" begin
+@testset "Simple 2D image" begin
     filepath = get_example("house.tif")
     img = TIFF.load(filepath)
 
-    img2 = TIFF.DenseTaggedImage(Gray{Float64}.(img));
+    img2 = TIFF.DenseTaggedImage(Gray{Float64}.(img.data));
     path, io = mktemp()
     write(io, img2)
     img3 = TIFF.load(path)
     @test eltype(img3) == Gray{Float64}
+end
+
+@testset "3D image" begin
+    filepath = get_example("mri.tif")
+    img = TIFF.load(filepath)
+
+    img2 = TIFF.DenseTaggedImage(RGB{Float64}.(img.data));
+    path, io = mktemp()
+    write(io, img2)
+    img3 = TIFF.load(path)
+    @test eltype(img3) == RGB{Float64}
 end
