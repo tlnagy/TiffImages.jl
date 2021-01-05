@@ -10,8 +10,7 @@ interpretation(::Type{T}) where {T <: AbstractRGB} = PHOTOMETRIC_RGB
 interpretation(::Type{<: TransparentColor{C, T, N}}) where {C, T, N} = interpretation(C)
 
 samplesperpixel(img::AbstractArray) = samplesperpixel(eltype(img))
-samplesperpixel(::Type{<: Color{T, N}}) where {T, N} = N
-samplesperpixel(::Type{<: TransparentColor{C, T, N}}) where {C, T, N} = samplesperpixel(C)
+samplesperpixel(::Type{<: Colorant{T, N}}) where {T, N} = N
 
 bitspersample(img::AbstractArray) = bitspersample(eltype(img))
 bitspersample(::Type{<: Colorant{T, N}}) where {T, N} = sizeof(T)*8
@@ -22,3 +21,7 @@ sampleformat(::Type{<: Colorant{<: FixedPoint{T, S}, N}}) where {T <: Unsigned, 
 sampleformat(::Type{<: Colorant{<: FixedPoint{T, S}, N}}) where {T <: Signed, N, S} = SAMPLEFORMAT_INT
 sampleformat(::Type{<: Colorant{Complex{T}, N}}) where {T <: AbstractFloat, N} = SAMPLEFORMAT_COMPLEXIEEEFP
 sampleformat(::Type{<: Colorant{Complex{T}, N}}) where {T <: Signed, N} = SAMPLEFORMAT_COMPLEXINT
+
+extrasamples(img::AbstractArray) = extrasamples(eltype(img))
+extrasamples(img::Type) = nothing
+extrasamples(img::Type{<: TransparentColor}) = 1

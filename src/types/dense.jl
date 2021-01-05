@@ -67,6 +67,10 @@ function _constructifd(data::AbstractArray{T, 2}, ::Type{O}) where {T <: Coloran
     ifd[PHOTOMETRIC] = interpretation(data)
     ifd[SAMPLESPERPIXEL] = UInt16(n_samples)
     ifd[SAMPLEFORMAT] = fill(UInt16(sampleformat(data)), n_samples)
+    extra = extrasamples(data)
+    if extra !== nothing
+        ifd[EXTRASAMPLES] = extra
+    end
     ifd
 end
 
