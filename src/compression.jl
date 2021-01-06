@@ -34,7 +34,7 @@ end
 Given a `read!` signature, returns the compression technique implemented.
 
 ```jldoctest
-julia> TIFF.get_inflator(first(methods(read!, [TIFF.TiffFile, AbstractArray, Val], [TIFF])).sig)
+julia> TIFF.get_inflator(first(methods(read!, [TIFF.TiffFile, AbstractArray, Val{TIFF.COMPRESSION_NONE}], [TIFF])).sig)
 COMPRESSION_NONE::CompressionType = 1 
 ```
 """
