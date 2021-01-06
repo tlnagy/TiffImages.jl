@@ -11,11 +11,14 @@ Base.iterate(ifd::IFD, n::Integer) = iterate(ifd.tags, n)
 Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
 Base.in(key::TiffTag, v::IFD) = in(UInt16(key), v)
 Base.in(key::UInt16, v::IFD) = in(key, keys(v))
+Base.delete!(ifd::IFD, key::TiffTag) = delete!(ifd, UInt16(key))
+Base.delete!(ifd::IFD, key::UInt16) = delete!(ifd.tags, key)
 
 Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, value, key)
 Base.setindex!(ifd::IFD, value::Tag, key::TiffTag) = setindex!(ifd.tags, value, UInt16(key))
 
-function Base.setindex!(ifd::IFD{O}, value, key::TiffTag) where {O <: Unsigned}
+Base.setindex!(ifd::IFD, value, key::TiffTag) = setindex!(ifd, value, UInt16(key))
+function Base.setindex!(ifd::IFD{O}, value, key::UInt16) where {O <: Unsigned}
     setindex!(ifd, Tag{O}(key, value), UInt16(key))
 end
 

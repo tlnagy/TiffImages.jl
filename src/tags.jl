@@ -1,3 +1,8 @@
+"""
+    $(TYPEDEF)
+
+$FIELDS
+"""
 struct Tag{O <: Unsigned}
     tag::UInt16
     datatype::DataType
@@ -6,28 +11,29 @@ struct Tag{O <: Unsigned}
     loaded::Bool
 end
 
-function Tag{O}(tag::TiffTag, data::String) where {O <: Unsigned}
-    Tag(UInt16(tag), String, O(length(data)+1), Array{UInt8}(data*"\0"), true)
+function Tag{O}(tag::UInt16, data::String) where {O <: Unsigned}
+    Tag(tag, String, O(length(data)+1), Array{UInt8}(data*"\0"), true)
 end
 
-function Tag{O}(tag::TiffTag, data::T) where {O <: Unsigned, T <: Number}
+function Tag{O}(tag::UInt16, data::T) where {O <: Unsigned, T <: Number}
     Tag{O}(tag, Array(reinterpret(UInt8, [data])), T)
 end
 
-function Tag{O}(tag::TiffTag, data::Array{T}) where {O <: Unsigned, T <: Number}
+function Tag{O}(tag::UInt16, data::Array{T}) where {O <: Unsigned, T <: Number}
     Tag{O}(tag, Array(reinterpret(UInt8, data)), T)
 end
 
-function Tag{O}(tag::TiffTag, data::Array{UInt8}, T::DataType) where {O <: Unsigned}
+function Tag{O}(tag::UInt16, data::Array{UInt8}, T::DataType) where {O <: Unsigned}
     n = length(data)
     # pad to match the read function
     if length(data) < sizeof(O)
         append!(data, fill(0x00, sizeof(O) - length(data)))
     end
-    Tag(UInt16(tag), T, O(n / bytes(T)), data, true)
+    Tag(tag, T, O(n / bytes(T)), data, true)
 end
 
-Tag{O}(tag::TiffTag, data::T) where {O <: Unsigned, T <: Enum} = Tag{O}(tag, UInt16(data))
+Tag{O}(tag::UInt16, data::T) where {O <: Unsigned, T <: Enum} = Tag{O}(tag, UInt16(data))
+Tag{O}(tag::TiffTag, data) where {O <: Unsigned} = Tag{O}(UInt16(tag), data)
 
 function load(tf::TiffFile{O}, t::Tag{O}) where {O}
     (t.loaded) && return t
@@ -107,34 +113,34 @@ function Base.read(tf::TiffFile, ::Type{Tag{O}}) where O <: Unsigned
 end
 
 function Base.show(io::IO, t::Tag{O}) where {O}
-    print("TIFF.Tag{$O}(")
+    print(io, "Tag(")
     try
-        print(TiffTag(t.tag), ", ")
+        print(io, TiffTag(t.tag), ", ")
     catch
-        print("UNKNOWN($(Int(t.tag))), ")
+        print(io, "UNKNOWN($(Int(t.tag))), ")
     end
-    print(t.datatype, ", ")
-    print(Int(t.count), ", ")
+    print(io, t.datatype, ", ")
+    print(io, Int(t.count), ", ")
     if t.tag == Int(COMPRESSION)
-        print(CompressionType(first(t.data)))
+        print(io, CompressionType(first(t.data)))
     else
         if t.loaded
             if t.count > 1 
                 if t.datatype == String
-                    print("\"", first(t.data, 20), "\"")
+                    print(io, "\"", first(t.data, 20), "\"")
                 else
-                    print("[", join(t.data[1:min(5, end)], ", "), (length(t.data) > 5) ? ", ..." : "", "]")
+                    print(io, "[", join(t.data[1:min(5, end)], ", "), (length(t.data) > 5) ? ", ..." : "", "]")
                 end
             elseif t.count == 1
-                print(first(t.data))
+                print(io, first(t.data))
             else
-                print("""\"\"""")
+                print(io, """\"\"""")
             end
         else
-            print("***")
+            print(io, "***")
         end
     end
-    print(")")
+    print(io, ")")
 end
 
 """

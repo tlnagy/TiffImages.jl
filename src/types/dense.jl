@@ -41,6 +41,11 @@ while for BigTIFFs it will be UInt64.
 """
 offset(::DenseTaggedImage{T, N, O, AA}) where {T, N, O, AA} = O
 
+"""
+    _constructifd(data, offset)
+
+Generate a IFD with the minimal set of tags to describe `data`.
+"""
 function _constructifd(data::AbstractArray{T, 3}) where {T <: Colorant}
     offset = UInt32
     if sizeof(T) * length(data) >= 3.8*10^9 
