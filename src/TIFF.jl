@@ -1,6 +1,7 @@
 module TIFF
 
 using ColorTypes
+using DocStringExtensions
 using FileIO
 using FixedPointNumbers
 using IndirectArrays

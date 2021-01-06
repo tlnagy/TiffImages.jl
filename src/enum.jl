@@ -32,7 +32,15 @@
 
 
 
+"""
+	$(TYPEDEF)
 
+List of many common named TIFF Tags. This is not an exhaustive list but should
+cover most cases.
+
+$(FIELDS)
+
+"""
 @enum TiffTag begin
 	SUBFILETYPE = 254 			 #  subfile data descriptor
 #define	    FILETYPE_REDUCEDIMAGE	0x1	/* reduced resolution version */
