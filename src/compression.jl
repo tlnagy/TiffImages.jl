@@ -9,10 +9,10 @@ Base.read!(tf::TiffFile, arr::AbstractArray, comp::CompressionType) = read!(tf, 
 
 Base.read!(tf::TiffFile, arr::AbstractArray, ::Val{COMPRESSION_NONE}) = read!(tf, arr)
 
-function Base.read!(tf::TiffFile, arr::AbstractArray, ::Val{COMPRESSION_PACKBITS})
+function Base.read!(tf::TiffFile, arr::AbstractArray{T, N}, ::Val{COMPRESSION_PACKBITS}) where {T, N}
     pos = 1
     nbit = Array{Int8}(undef, 1)
-    nxt = Array{UInt8}(undef, 1)
+    nxt = Array{T}(undef, 1)
     while pos < length(arr)
         read!(tf, nbit)
         n = nbit[1]
@@ -38,7 +38,7 @@ julia> TIFF.get_inflator(first(methods(read!, [TIFF.TiffFile, AbstractArray, Val
 COMPRESSION_NONE::CompressionType = 1 
 ```
 """
-get_inflator(::Type{Tuple{F, T, A, Val{C}}}) where {F, T, A, C} = C
+get_inflator(::Type{Tuple{typeof(read!), TiffFile, AbstractArray{T, N} where {T, N}, Val{C}}}) where C = C
 
 # autogenerate nice error messages for all non-implemented inflation methods
 implemented = map(x->get_inflator(x.sig), methods(read!, [TiffFile, AbstractArray, Val], ))

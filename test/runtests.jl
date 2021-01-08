@@ -15,10 +15,10 @@ get_example(name) = download("https://github.com/tlnagy/exampletiffs/blob/master
     filepath = get_example("house.tif")
     img = TIFF.load(filepath)
     @test size(img) == (512, 512)
-    @test eltype(img) == Gray{N0f8}
-    @test img[50,50] == Gray{N0f8}(0.804) # value from ImageMagick.jl
+    @test eltype(img) == GrayA{N0f8}
+    @test img[50,50] == GrayA{N0f8}(0.804, 1.0) # value from ImageMagick.jl
     img[50:300, 50:150] .= 0.0
-    @test img[50, 50] == Gray{N0f8}(0.0)
+    @test img[50, 50] == GrayA{N0f8}(0.0, 1.0)
 end
 
 @testset "MRI stack" begin
@@ -92,4 +92,8 @@ end
 
 @testset "Writing" begin
     include("writer.jl")
+end
+
+@testset "Interpreting IFD layouts" begin
+    include("layouts.jl")
 end

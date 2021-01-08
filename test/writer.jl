@@ -94,5 +94,5 @@ end
     path, io = mktemp()
     write(io, img2)
     img3 = TIFF.load(path)
-    @test eltype(img3) == Gray{N0f8}
+    @test eltype(img3) == GrayA{N0f8}
 end

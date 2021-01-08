@@ -88,11 +88,10 @@ function Base.read!(io::IOStream, arr::SubArray{T,N,P,I,L}) where {T, N, P <: Bi
     error("Strided bilevel TIFFs are not yet supported. Please open an issue against TIFF.jl.")
 end
 
-function Base.read!(io::IOStream, arr::SubArray{T,N,P,I,L}) where {T, N, P <: BitArray, I <: Tuple{Base.Slice, Int64}, L}
-    rng = arr.offset1 .+ arr.indices[1]
-    n = length(rng)
-    Bc = view(parent(arr).chunks, (Base.get_chunks_id(rng.start)[1]):(Base.get_chunks_id(rng.stop)[1]))
-    nc = length(read!(io, Bc))
+function Base.read!(file::TiffFile, arr::BitArray)
+    Bc = arr.chunks 
+    n = length(arr)
+    nc = length(read!(file.io, Bc))
     if length(Bc) > 0 && Bc[end] & Base._msk_end(n) ≠ Bc[end]
         Bc[end] &= Base._msk_end(n) # ensure that the BitArray is not broken
     end
