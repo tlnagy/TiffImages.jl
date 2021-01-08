@@ -45,18 +45,18 @@ const _mask4_uint128 = (UInt128(0x0f0f0f0f0f0f0f0f) << 64) | UInt128(0x0f0f0f0f0
 
 Reverse the bit order in each byte of `x`. Julia assumes the first bit of each
 byte is packed as a 0x01, while in TIFFs it's actually packed as 0x80. This
-function flips the bit packing order. 
+function flips the bit packing order.
 
 !!! note
     This function does not flip the byte packing order, a la `bswap`.
 
 This function should be applied to a BitArray after it is read in via
-[`reversebits!`](@ref). 
+[`reversebits!`](@ref).
 
 Code adapted from https://github.com/JuliaLang/julia/pull/34791
 
 ```jldoctest
-julia> TIFF.reversebits(0x0101) == 0x8080
+julia> TiffImages.reversebits(0x0101) == 0x8080
 true
 ```
 """

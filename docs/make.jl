@@ -1,5 +1,5 @@
 using Documenter
-using TIFF
+using TiffImages
 
 using Literate
 using Images
@@ -12,13 +12,13 @@ for ex in EXAMPLES
     Literate.markdown(ex, OUTPUT, documenter = true)
 end
 
-DocMeta.setdocmeta!(TIFF, :DocTestSetup, :(using TIFF); recursive=true)
+DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
 makedocs(
     format = Documenter.HTML(
-        prettyurls = true, 
+        prettyurls = true,
     ),
-    modules=[TIFF], 
-    sitename="TIFF.jl",
+    modules=[TiffImages],
+    sitename="TiffImages.jl",
     authors="Tamas Nagy and contributors",
     pages = [
         "Home" => "index.md",
@@ -37,5 +37,5 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/tlnagy/TIFF.jl.git",
+    repo = "github.com/tlnagy/TiffImages.jl.git",
 )
