@@ -1,4 +1,4 @@
-function load(filepath::String; verbose=false)
+function load(filepath::String; verbose=true)
     open(filepath) do io
         load(io; verbose=verbose)
     end
@@ -29,79 +29,61 @@ function load(io::IOStream; verbose=true)
 
         nplanes += 1
     end
-    if layout.rawtype == Bool
-        slice = view(BitArray(undef, layout.nbytes*8), :, 1)
-    else
-        slice = Array{layout.readtype}(undef, layout.nbytes÷sizeof(layout.readtype))
-    end
+
+    loaded = load(tf, layout, ifds, Val(nplanes); verbose=verbose)
     
-    ifds_iter = Iterators.Stateful(ifds)
-
-    # load first slice
-    ifd = popfirst!(ifds_iter)
-    trans = load(slice, tf, layout, ifd)
-
-    # construct the final realized array from the lazy wrappers
-    data = Array{eltype(trans)}(undef, size(trans)..., nplanes)
-    plane_dim = length(size(data))
-    # set the first plane to the data in trans
-    selectdim(data, plane_dim, 1) .= trans
-
-    freq = verbose ? 1 : Inf
-    @showprogress freq for (idx, ifd) in enumerate(ifds_iter)
-        trans = load(slice, tf, layout, ifd)
-        selectdim(data, plane_dim, idx+1) .= trans
-    end
-
-    if layout.interpretation == PHOTOMETRIC_PALETTE
+    if eltype(loaded) <: Palette
+        ifd = ifds[1]
+        raw = rawtype(ifd)
+        loadedr = reinterpret(raw, loaded)
         maxdepth = 2^(first(ifd[BITSPERSAMPLE].data))-1
         colors = ifd[COLORMAP].data
         color_map = vec(reinterpret(RGB{N0f16}, reshape(colors, :, 3)'))
-        data = IndirectArray(data, OffsetArray(color_map, 0:maxdepth))
+        data = IndirectArray(loadedr, OffsetArray(color_map, 0:maxdepth))
+    elseif eltype(loaded) <: Bool
+        data = Gray.(loaded)
+    else
+        data = loaded
     end
 
     close(tf.io)
-    todrop = tuple(findall(size(data) .== 1)...)
-    DenseTaggedImage(dropdims(data, dims=todrop), ifds)
+    return DenseTaggedImage(data, ifds)
 end
 
-"""
-    load(prealloc, tf, layout, ifd)
+function load(tf::TiffFile, layout::IFDLayout, ifds, ::Val{1}; verbose = true)
+    ifd = ifds[1]
 
-Read the raw data from `tf` into `prealloc` and then lazily transform the latter
-based on the information in `layout` and `ifd`. The returned array can later be
-realized to unwrap the lazy transforms.
-"""
-function load(prealloc::AbstractVector, tf::TiffFile, layout::IFDLayout, ifd::IFD)
-    read!(prealloc, tf, ifd)
-
-    data = reinterpret(layout.rawtype, prealloc)
-
-    trans = reshape(data, :, layout.nrows) 
+    colortype, extras = interpretation(ifd)
+    
     if layout.rawtype == Bool
-        trans = view(trans, 1:layout.ncols, 1:layout.nrows)
-    end
-
-    if layout.nsamples > 1
-        trans = PermutedDimsArray(reshape(trans, layout.nsamples, layout.ncols, layout.nrows), [1, 3, 2])
+        cache = BitArray(undef, ncols(ifd), nrows(ifd))
     else
-        trans = PermutedDimsArray(trans, [2, 1])
+        cache = Array{colortype{layout.mappedtype}}(undef, ncols(ifd), nrows(ifd))
+    end
+    
+    read!(cache, tf, ifd)
+
+    return Array(cache')
+end
+
+function load(tf::TiffFile, layout::IFDLayout, ifds, ::Val{N}; verbose = true) where {N}
+    ifd = ifds[1]
+
+    colortype, extras = interpretation(ifd)
+
+    if layout.rawtype == Bool
+        cache = BitArray(undef, ncols(ifd), nrows(ifd))
+    else
+        cache = Array{colortype{layout.mappedtype}}(undef, ncols(ifd), nrows(ifd))
     end
 
-    colortype = nothing
-    if layout.interpretation != PHOTOMETRIC_PALETTE
-        if layout.interpretation == PHOTOMETRIC_MINISBLACK
-            colortype = Gray{layout.mappedtype}
-            if layout.nsamples > 1
-                trans = view(trans, 1, :, :)
-            end
-        elseif layout.interpretation == PHOTOMETRIC_RGB
-            colortype = RGB{layout.mappedtype}
-            trans = view(trans, 1:3, :, :)
-        else
-            error("Given TIFF requests $(layout.interpretation) interpretation, but that's not yet supported")
-        end
-        trans = reinterpret(colortype, trans)
+    data = similar(cache, nrows(ifd), ncols(ifd), N)
+
+    freq = verbose ? 1 : Inf
+    @showprogress freq for (idx, ifd) in enumerate(ifds)
+        read!(cache, tf, ifd)
+        data[:, :, idx] .= cache'
     end
-    trans
+    
+    return data
 end

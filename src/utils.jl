@@ -136,3 +136,7 @@ const rawtype_mapping = Dict(
     (SAMPLEFORMAT_IEEEFP, 32) => Float32,
     (SAMPLEFORMAT_IEEEFP, 64) => Float64,
 )
+
+Base.bswap(d::FixedPoint{T, N}) where {T, N} = FixedPointNumber.rawone(FixedPoint{T, N}(bswap(d)))
+Base.bswap(c::Colorant{T, N}) where {T, N} = mapc(bswap, c)
+Base.bswap(c::Colorant{<: FixedPoint{UInt8, N1}, N2}) where {N1, N2} = c

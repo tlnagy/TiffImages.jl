@@ -9,6 +9,7 @@ Base.keys(ifd::IFD) = keys(ifd.tags)
 Base.iterate(ifd::IFD) = iterate(ifd.tags)
 Base.iterate(ifd::IFD, n::Integer) = iterate(ifd.tags, n)
 Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
+Base.getindex(ifd::IFD{O}, key::UInt16) where {O} = getindex(ifd.tags, key)
 Base.in(key::TiffTag, v::IFD) = in(UInt16(key), v)
 Base.in(key::UInt16, v::IFD) = in(key, keys(v))
 Base.delete!(ifd::IFD, key::TiffTag) = delete!(ifd, UInt16(key))
@@ -22,7 +23,6 @@ function Base.setindex!(ifd::IFD{O}, value, key::UInt16) where {O <: Unsigned}
     setindex!(ifd, Tag{O}(key, value), UInt16(key))
 end
 
-Base.getindex(ifd::IFD{O}, key::UInt16) where {O} = getindex(ifd.tags, key)
 
 function load!(tf::TiffFile, ifd::IFD)
     for idx in keys(ifd)

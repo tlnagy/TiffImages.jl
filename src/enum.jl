@@ -504,3 +504,9 @@ end
 	COMPRESSION_JP2000 = 34712   	# Leadtools JPEG2000
 	COMPRESSION_LZMA = 34925		# LZMA2
 end
+
+@enum ExtraSamples begin
+	EXTRASAMPLE_UNSPECIFIED = 0		# unspecified data
+	EXTRASAMPLE_ASSOCALPHA = 1 		# associated alpha data
+	EXTRASAMPLE_UNASSALPHA = 2 		# unassociated alpha data
+end
