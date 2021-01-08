@@ -35,7 +35,7 @@ Base.read(io::IOStream, t::Type{TiffFile}) = read(Stream(format"TIFF", io, extra
 
 function Base.write(file::TiffFile{O}) where O
     seekstart(file.io)
-    
+
     if ENDIAN_BOM == 0x04030201 #little endian
         write(file.io, "II")
     else
@@ -85,18 +85,18 @@ function Base.read!(file::TiffFile, arr::AbstractArray)
 end
 
 function Base.read!(io::IOStream, arr::SubArray{T,N,P,I,L}) where {T, N, P <: BitArray, I <: Tuple{UnitRange, Int64}, L}
-    error("Strided bilevel TIFFs are not yet supported. Please open an issue against TIFF.jl.")
+    error("Strided bilevel TIFFs are not yet supported. Please open an issue against TiffImages.jl.")
 end
 
 function Base.read!(file::TiffFile, arr::BitArray)
-    Bc = arr.chunks 
+    Bc = arr.chunks
     n = length(arr)
     nc = length(read!(file.io, Bc))
     if length(Bc) > 0 && Bc[end] & Base._msk_end(n) ≠ Bc[end]
         Bc[end] &= Base._msk_end(n) # ensure that the BitArray is not broken
     end
     for i in 1:nc
-       Bc[i] = TIFF.reversebits(Bc[i]) 
+       Bc[i] = reversebits(Bc[i])
     end
     arr
 end

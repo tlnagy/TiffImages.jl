@@ -1,4 +1,4 @@
-# TIFF.jl
+# TiffImages.jl
 
 *Pure-Julia TIFF reader and writer with a focus on correctness* 🧐
 
@@ -16,7 +16,7 @@ do as much lazily and flexibly as possible.
 
 ## Features
 
-TIFF.jl supports:
+TiffImages.jl supports:
 
 - [x] The TIFF 6.0 baseline spec
 - [x] Thorough testing

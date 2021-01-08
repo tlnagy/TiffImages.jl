@@ -1,4 +1,4 @@
-module TIFF
+module TiffImages
 
 using ColorTypes
 using DocStringExtensions

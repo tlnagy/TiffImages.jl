@@ -1,6 +1,6 @@
 # # Writing TIFFs
 
-# This page is a tutorial for saving TIFFs using TIFF.jl and covers some common
+# This page is a tutorial for saving TIFFs using TiffImages.jl and covers some common
 # use cases
 
 #md # ```@contents
@@ -9,7 +9,7 @@
 #md # ```
 
 # You might want to write TIFFs to disk too. Now this can be done quite simply
-# with TIFF.jl. Say you have some AbstractArray type that you want to save, here
+# with TiffImages.jl. Say you have some AbstractArray type that you want to save, here
 # we'll call it `data`:
 
 using Random
@@ -19,21 +19,21 @@ Random.seed!(123)
 data = rand(RGB{N0f8}, 10, 10)
 
 #md # !!! note
-#md #     TIFF.jl only works with AbstractArrays with `eltype`s of `<:Colorant` because
+#md #     TiffImages.jl only works with AbstractArrays with `eltype`s of `<:Colorant` because
 #md #     the writer needs to know how to represent the image data on disk. Make sure to
 #md #     convert your `AbstractArrays` using before passing them. See the
 #md #     [common strategies](#Strategies-for-saving-common-types) section
 #md #     below for tips.
-     
-# ## Converting to `TIFF.jl`'s TIFF type
+
+# ## Converting to `TiffImages.jl`'s TIFF type
 # Next lets convert `data` to a TIFF type
 
-using TIFF
-img = TIFF.DenseTaggedImage(data)
+using TiffImages
+img = TiffImages.DenseTaggedImage(data)
 
 # Wait nothing happened! Hang with me, lets take a closer look at our new object
 # using the `dump` command. We can see that there's now new information
-# associated with our data! TIFF.jl usually represents TIFF images as simply the
+# associated with our data! TiffImages.jl usually represents TIFF images as simply the
 # data and associated tags that describe the data
 
 dump(img; maxdepth=1)
@@ -54,26 +54,26 @@ ifd
 # These are some of the most basic tags that are required by the TIFF spec. We
 # can even update it to add our own custom tags
 
-ifd[TIFF.IMAGEDESCRIPTION] = "This is very important data"
+ifd[TiffImages.IMAGEDESCRIPTION] = "This is very important data"
 ifd
 
 # We can even add tags that aren't in the standard set in
-# [`TIFF.TiffTag`](@ref) as long as they are a `UInt16`
+# [`TiffImages.TiffTag`](@ref) as long as they are a `UInt16`
 
 ifd[UInt16(34735)] = UInt16[1, 2, 3]
 ifd
 
 # We can also delete tags if we decide we don't want them:
 
-delete!(ifd, TIFF.IMAGEDESCRIPTION)
+delete!(ifd, TiffImages.IMAGEDESCRIPTION)
 ifd
 
 #md # !!! warning
-#md #     Careful with `delete!`, if any of core tags are deleted, TIFF.jl and
+#md #     Careful with `delete!`, if any of core tags are deleted, TiffImages.jl and
 #md #     other readers might fail to read the file
 
 # ## Saving to disk
-# 
+#
 # Once you're happy with your TIFF object, you can write it to disk as follows:
 
 open("test.tif", "w") do io
@@ -82,7 +82,7 @@ end
 
 # And to just double check, we can load it right back in
 
-TIFF.load("test.tif")
+TiffImages.load("test.tif")
 
 # ## Strategies for saving common types
 
@@ -90,24 +90,24 @@ TIFF.load("test.tif")
 # type. The key step is the convert or reinterpret the arrays so that the
 # elements are subtypes of `Colors.Colorant`
 
-# #### Unsigned Integers 
+# #### Unsigned Integers
 
 # Say you want to save a 3D array of small integers as grayscale values.
 
 data2 = rand(UInt8.(1:255), 5, 10)
 eltype(data2)
 
-# You can't directly save the `data2` since TIFF.jl needs some color information
+# You can't directly save the `data2` since TiffImages.jl needs some color information
 # to properly save the file. You can use
 # [`reinterpret`](https://docs.julialang.org/en/v1/base/arrays/#Base.reinterpret)
 # to accomplish this:
 
 grays = reinterpret(Gray{N0f8}, data2)
-img2 = TIFF.DenseTaggedImage(grays)
+img2 = TiffImages.DenseTaggedImage(grays)
 
 # Here the data are first reinterpreted as `N0f8`s, which is a
 # [`FixedPointNumber`](https://github.com/JuliaMath/FixedPointNumbers.jl) then
-# wrapped with a Gray type that marks this as a grayscale image. TIFF.jl uses
+# wrapped with a Gray type that marks this as a grayscale image. TiffImages.jl uses
 # this information to update the TIFF tags
 
 # #### Floating point numbers
@@ -117,7 +117,7 @@ img2 = TIFF.DenseTaggedImage(grays)
 
 data = rand(Float64, 3, 5, 10);
 colors = dropdims(reinterpret(RGB{eltype(data)}, data), dims=1) # drop first dimension
-img3 = TIFF.DenseTaggedImage(colors)
+img3 = TiffImages.DenseTaggedImage(colors)
 
 # Here we dropped the first dimension since it was collapsed into the RGB type
 # when we ran the `reinterpret` command.
@@ -131,7 +131,7 @@ img3 = TIFF.DenseTaggedImage(colors)
 
 data = rand(-100:100, 5, 5)
 #--------------------------
-img4 = TIFF.DenseTaggedImage(reinterpret(Gray{Q0f63}, data))
+img4 = TiffImages.DenseTaggedImage(reinterpret(Gray{Q0f63}, data))
 println(img4.ifds[1])
 
 # As you can see the `SAMPLEFORMATS` and `BITSPERSAMPLE` tags correctly updated

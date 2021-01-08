@@ -4,16 +4,16 @@ using Documenter
 using FixedPointNumbers
 using Statistics
 using Test
-using TIFF
+using TiffImages
 
-DocMeta.setdocmeta!(TIFF, :DocTestSetup, :(using TIFF); recursive=true)
-doctest(TIFF)
+DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
+doctest(TiffImages)
 
 get_example(name) = download("https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true")
 
 @testset "Gray with ExtraSample" begin
     filepath = get_example("house.tif")
-    img = TIFF.load(filepath)
+    img = TiffImages.load(filepath)
     @test size(img) == (512, 512)
     @test eltype(img) == GrayA{N0f8}
     @test img[50,50] == GrayA{N0f8}(0.804, 1.0) # value from ImageMagick.jl
@@ -23,7 +23,7 @@ end
 
 @testset "MRI stack" begin
     filepath = get_example("mri.tif")
-    img = TIFF.load(filepath)
+    img = TiffImages.load(filepath)
     @test size(img) == (128, 128, 27)
     @test eltype(img) == RGB{N0f16}
 
@@ -42,29 +42,29 @@ end
 
 @testset "Floating point RGB image" begin
     filepath = get_example("spring.tif")
-    img = TIFF.load(filepath)
+    img = TiffImages.load(filepath)
     @test size(img) == (619, 858)
     @test eltype(img) == RGB{Float16}
 end
 
 @testset "Packbits image" begin
     filepath = get_example("coffee.tif")
-    img = TIFF.load(filepath)
+    img = TiffImages.load(filepath)
     @test size(img) == (378, 504)
     @test eltype(img) == Gray{N0f8}
 end
 
 @testset "Bilevel image" begin
     filepath = get_example("capitol.tif")
-    img = TIFF.load(filepath)
+    img = TiffImages.load(filepath)
     @test size(img) == (378, 504)
     @test eltype(img) == Gray{Bool}
 end
 
 @testset "Signed integer type" begin
     filepath = get_example("4D-series.ome.tif")
-    img = TIFF.load(filepath)
-    
+    img = TiffImages.load(filepath)
+
     @test size(img) == (167, 439, 35)
     expected_rng = reinterpret.(Q0f7, Int8.((-1, 96)))
     @test extrema(img[:, :, 1]) == expected_rng
@@ -73,19 +73,19 @@ end
 @testset "Issue #12" begin
     @testset "Big endian striped file" begin
         filepath = get_example("flagler.tif")
-        img = TIFF.load(filepath)
+        img = TiffImages.load(filepath)
 
         # verify that strip offsets are correctly bswapped for endianness
-        img_stripoffsets = Int.(img.ifds[1][TIFF.STRIPOFFSETS].data)
+        img_stripoffsets = Int.(img.ifds[1][TiffImages.STRIPOFFSETS].data)
         @test img_stripoffsets == [8, 129848, 259688, 389528]
     end
 
     @testset "Little endian striped file" begin
         filepath = get_example("house.tif")
-        img = TIFF.load(filepath)
+        img = TiffImages.load(filepath)
 
         # verify that strip offsets are correctly bswapped for endianness
-        img_stripoffsets = Int.(img.ifds[1][TIFF.STRIPOFFSETS].data)
+        img_stripoffsets = Int.(img.ifds[1][TiffImages.STRIPOFFSETS].data)
         @test issorted(img_stripoffsets)
     end
 end

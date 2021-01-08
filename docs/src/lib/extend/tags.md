@@ -1,5 +1,5 @@
 # Built-in Tags
 
 ```@docs
-TIFF.TiffTag
+TiffImages.TiffTag
 ```
