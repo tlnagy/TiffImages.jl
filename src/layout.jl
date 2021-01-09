@@ -13,7 +13,7 @@ function interpretation(ifd::IFD)
     interp = PhotometricInterpretations(first(ifd[PHOTOMETRIC].data))
     extras = EXTRASAMPLE_UNSPECIFIED
     if EXTRASAMPLES in ifd
-        try 
+        try
             extras = ExtraSamples(first(ifd[EXTRASAMPLES].data))
         catch
             extras = EXTRASAMPLE_ASSOCALPHA
@@ -23,7 +23,7 @@ function interpretation(ifd::IFD)
 end
 
 # dummy color type for palette colored images to dispatch on
-struct Palette{T} <: Colorant{T, 1} 
+struct Palette{T} <: Colorant{T, 1}
     i::T
 end
 Base.reinterpret(::Type{Palette{T}}, arr::A) where {T, N, S, A <: AbstractArray{S, N}} = arr
@@ -71,4 +71,15 @@ function rawtype(ifd::IFD)
     rawtype_mapping[SampleFormats(first(sampleformats)), first(bitsperpixel)]
 end
 
+"""
+    $(SIGNATURES)
 
+Allocate a cache for this IFD with correct type and size.
+"""
+getcache(ifd::IFD) = getcache(ifd, Val(rawtype(ifd)))
+getcache(ifd::IFD, ::Val{Bool}) = BitArray(undef, ncols(ifd), nrows(ifd))
+function getcache(ifd::IFD, ::Val{T}) where {T}
+    colortype, extras = interpretation(ifd)
+
+    Array{colortype{_mappedtype(T)}}(undef, ncols(ifd), nrows(ifd))
+end

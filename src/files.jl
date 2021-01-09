@@ -1,7 +1,9 @@
 """
-    TiffFile(io) -> TiffFile
+    $(TYPEDEF) -> TiffFile
 
 Wrap `io` with helper parameters to keep track of file attributes.
+
+$(FIELDS)
 """
 mutable struct TiffFile{O <: Unsigned}
     """The relative path to this file"""
