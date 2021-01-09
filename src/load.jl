@@ -1,10 +1,10 @@
-function load(filepath::String; verbose=true)
+function load(filepath::String; verbose=true, mmap = false)
     open(filepath) do io
-        load(io; verbose=verbose)
+        load(io; verbose=verbose, mmap=mmap)
     end
 end
 
-function load(io::IOStream; verbose=true)
+function load(io::IOStream; verbose=true, mmap = false)
     tf = read(io, TiffFile)
 
     isdense = true
@@ -30,8 +30,12 @@ function load(io::IOStream; verbose=true)
         nplanes += 1
     end
 
-    loaded = load(tf, layout, ifds, Val(nplanes); verbose=verbose)
-    
+    if mmap
+        loaded = DiskTaggedImage(tf, ifds)
+    else
+        loaded = load(tf, ifds, Val(nplanes); verbose=verbose)
+    end
+
     if eltype(loaded) <: Palette
         ifd = ifds[1]
         raw = rawtype(ifd)
@@ -50,32 +54,18 @@ function load(io::IOStream; verbose=true)
     return DenseTaggedImage(data, ifds)
 end
 
-function load(tf::TiffFile, layout::IFDLayout, ifds, ::Val{1}; verbose = true)
+function load(tf::TiffFile, ifds, ::Val{1}; verbose = true)
     ifd = ifds[1]
-
-    colortype, extras = interpretation(ifd)
-    
-    if layout.rawtype == Bool
-        cache = BitArray(undef, ncols(ifd), nrows(ifd))
-    else
-        cache = Array{colortype{layout.mappedtype}}(undef, ncols(ifd), nrows(ifd))
-    end
-    
+    cache = getcache(ifd)
     read!(cache, tf, ifd)
 
     return Array(cache')
 end
 
-function load(tf::TiffFile, layout::IFDLayout, ifds, ::Val{N}; verbose = true) where {N}
+function load(tf::TiffFile, ifds, ::Val{N}; verbose = true) where {N}
     ifd = ifds[1]
 
-    colortype, extras = interpretation(ifd)
-
-    if layout.rawtype == Bool
-        cache = BitArray(undef, ncols(ifd), nrows(ifd))
-    else
-        cache = Array{colortype{layout.mappedtype}}(undef, ncols(ifd), nrows(ifd))
-    end
+    cache = getcache(ifd)
 
     data = similar(cache, nrows(ifd), ncols(ifd), N)
 
@@ -84,6 +74,6 @@ function load(tf::TiffFile, layout::IFDLayout, ifds, ::Val{N}; verbose = true) w
         read!(cache, tf, ifd)
         data[:, :, idx] .= cache'
     end
-    
+
     return data
 end

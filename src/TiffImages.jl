@@ -22,6 +22,7 @@ include("ifds.jl")
 include("layout.jl")
 include(joinpath("types", "common.jl"))
 include(joinpath("types", "dense.jl"))
+include(joinpath("types", "mmap.jl"))
 include("load.jl")
 
 end # module

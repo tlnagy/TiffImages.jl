@@ -18,9 +18,17 @@ do as much lazily and flexibly as possible.
 
 TiffImages.jl supports:
 
-- [x] The TIFF 6.0 baseline spec
-- [x] Thorough testing
-- [x] HDR images stored as 32bit or 64bit floats
-- [x] BigTIFFs
-- [ ] Out-of-memory support (WIP)
-- [ ] Streaming from disk (WIP)
+- The TIFF 6.0 baseline spec
+- Thorough testing
+- HDR images stored as 32bit or 64bit floats
+- BigTIFFs
+- Memory-mapped loading
+
+## Usage
+
+Check out the examples to see how to use `TiffImages.jl`
+
+```@contents
+Pages = ["examples/reading.md", "examples/writing.md"]
+Depth = 1
+```

@@ -4,5 +4,7 @@ If you want to extend `TiffImages.jl` to add support for more features or change
 TIFF data is loaded, you have come to right place.
 
 ```@docs
+TiffImages.TiffFile
+TiffImages.IFD
 TiffImages.Tag
 ```
