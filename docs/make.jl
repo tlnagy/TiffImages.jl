@@ -6,7 +6,7 @@ using Images
 
 EXAMPLE_DIR = joinpath(@__DIR__, "..", "examples")
 EXAMPLES = filter(x->endswith(x, ".jl"), joinpath.(EXAMPLE_DIR, readdir(EXAMPLE_DIR)))
-OUTPUT = joinpath(@__DIR__, "src", "generated")
+OUTPUT = joinpath(@__DIR__, "src", "examples")
 
 for ex in EXAMPLES
     Literate.markdown(ex, OUTPUT, documenter = true)
@@ -23,7 +23,8 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Examples" => [
-            "Writing TIFFs" => joinpath("generated", "writing.md")
+            "Reading TIFFs" => joinpath("examples", "reading.md")
+            "Writing TIFFs" => joinpath("examples", "writing.md")
         ],
         "Library" => [
             "Public" => joinpath("lib", "public.md"),

@@ -2,4 +2,4 @@
 Manifest.toml
 /dev/
 docs/build/
-docs/src/generated/
+docs/src/examples/

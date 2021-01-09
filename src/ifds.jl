@@ -1,3 +1,9 @@
+"""
+    $(TYPEDEF)
+
+An image file directory is a sorted collection of the tags representing this
+plane in the TIFF file.
+"""
 struct IFD{O <: Unsigned}
     tags::OrderedDict{UInt16, Tag{O}}
 end
@@ -123,7 +129,7 @@ function output(ifd::IFD)
         end
     end
     (length(rawtypes) > 1) && error("Variable per-pixel storage types are not yet supported")
-    rawtype = first(rawtypes)    
+    rawtype = first(rawtypes)
     readtype = rawtype
 
     compression = CompressionType(first(ifd[COMPRESSION].data))
@@ -140,7 +146,7 @@ function output(ifd::IFD)
         nbytes,
         readtype,
         rawtype,
-        first(mappedtypes), 
+        first(mappedtypes),
         compression,
         PhotometricInterpretations(interpretation))
 end
@@ -206,7 +212,7 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     for (tag, poses) in remotedata
         data_pos = position(tf.io)
         write(tf, tag.data)
-        push!(poses, data_pos)      
+        push!(poses, data_pos)
     end
 
     for (tag, poses) in remotedata
@@ -216,6 +222,6 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     end
 
     seek(tf, ifd_end_pos)
-    
+
     return ifd_end_pos
 end
