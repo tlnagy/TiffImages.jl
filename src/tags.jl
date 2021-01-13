@@ -3,92 +3,69 @@
 
 $FIELDS
 """
-struct Tag{O <: Unsigned}
+struct Tag{T}
     tag::UInt16
-    datatype::DataType
-    count::O
-    data::Vector{UInt8}
-    loaded::Bool
+    data::T
 end
 
-function Tag{O}(tag::UInt16, data::String) where {O <: Unsigned}
-    Tag(tag, String, O(length(data)+1), Array{UInt8}(data*"\0"), true)
-end
-
-function Tag{O}(tag::UInt16, data::T) where {O <: Unsigned, T <: Number}
-    Tag{O}(tag, Array(reinterpret(UInt8, [data])), T)
-end
-
-function Tag{O}(tag::UInt16, data::Array{T}) where {O <: Unsigned, T <: Number}
-    Tag{O}(tag, Array(reinterpret(UInt8, data)), T)
-end
-
-function Tag{O}(tag::UInt16, data::Array{UInt8}, T::DataType) where {O <: Unsigned}
-    n = length(data)
-    # pad to match the read function
-    if length(data) < sizeof(O)
-        append!(data, fill(0x00, sizeof(O) - length(data)))
+Tag(tag::TiffTag, data) = Tag(UInt16(tag), data)
+Tag(tag::UInt16, data::String) = Tag{String}(tag, data) 
+Tag(tag::UInt16, data::T) where {T <: Enum} = Tag{UInt16}(tag, UInt16(data)) 
+function Tag(tag::UInt16, data::AbstractVector{T}) where {T} 
+    if length(data) == 1 
+        Tag{T}(tag, first(data))
+    else 
+        Tag{Vector{T}}(tag, data) 
     end
-    Tag(tag, T, O(n / bytes(T)), data, true)
 end
 
-Tag{O}(tag::UInt16, data::T) where {O <: Unsigned, T <: Enum} = Tag{O}(tag, UInt16(data))
-Tag{O}(tag::TiffTag, data) where {O <: Unsigned} = Tag{O}(UInt16(tag), data)
+Base.length(t::Union{Tag{<: AbstractVector}, Tag{<: AbstractString}}) = length(t.data)
+Base.length(t::Tag) = 1
 
-function load(tf::TiffFile{O}, t::Tag{O}) where {O}
-    (t.loaded) && return t
+Base.eltype(::Tag{T}) where {T} = T
+Base.eltype(::Tag{<: AbstractVector{T}}) where {T} = T
+Base.eltype(t::Tag{RemoteData}) = t.data.datatype
 
-    loc = first(reinterpret(O, getfield(t, :data)))
+load(tf::TiffFile, t::Tag) = t
 
-    data = Vector{UInt8}(undef, bytes(t.datatype)*t.count)
+function load(tf::TiffFile{O}, t::Tag{RemoteData{O}}) where {O <: Unsigned}
+    T = t.data.datatype
+    N = t.data.count
+    rawdata = Vector{UInt8}(undef, bytes(T)*N)
 
     pos = position(tf.io)
-    seek(tf, loc)
-    read!(tf, data)
+    seek(tf, t.data.position)
+    read!(tf, rawdata)
 
     # if this datatype is comprised of multiple bytes and this file needs to be
     # bitswapped then we'll need to reverse the byte order inside each datatype
     # unit 
-    if tf.need_bswap && bytes(t.datatype) >= 2
-        reverse!(data)
-        data .= Array(reinterpret(UInt8, Array{t.datatype}(reverse(reinterpret(t.datatype, data)))))
+    if tf.need_bswap && bytes(T) >= 2
+        reverse!(rawdata)
+        data = Array{T}(reverse(reinterpret(T, rawdata)))
+    elseif T == String
+        data = String(rawdata)
+    elseif T == Any
+        data = Array{Any}(rawdata)
+    else
+        data = Array{T}(reinterpret(T, rawdata))
+    end
+
+    if N == 1
+        data = first(data)
     end
     seek(tf, pos)
 
-    Tag(t.tag, t.datatype, t.count, data, true)
-end
-
-function Base.getproperty(t::Tag{O}, sym::Symbol) where {O}
-    (sym != :data) && return getfield(t, sym)
-
-    if !t.loaded
-        error("This tag has remote data and it hasn't been loaded yet. Call `load!` first")
-    end
-
-    T = t.datatype 
-    T = T == Any ? UInt8 : T
-
-    data = getfield(t, sym)
-    if T == UInt8
-        converted = data
-    elseif isbitstype(T)
-        converted = reinterpret(t.datatype, data)
-    elseif T == String
-        # copy is needed so that the string constructor doesn't edit the
-        # underlying data
-        converted = String(copy(data))
-    else
-        error("Unexpected tag type")
-    end
-
-    converted
+    Tag(t.tag, data)
 end
 
 bytes(x::Type) = sizeof(x)
 bytes(::Type{Any}) = 1
 bytes(::Type{String}) = 1
+bytes(::Type{RemoteData{O}}) where {O} = one(O)
+bytes(::Type{<: AbstractVector{T}}) where {T} = bytes(T)
 
-function Base.read(tf::TiffFile, ::Type{Tag{O}}) where O <: Unsigned
+function Base.read(tf::TiffFile{O}, ::Type{Tag}) where O <: Unsigned
     tag = read(tf, UInt16)
     datatype = read(tf, UInt16)
     count = read(tf, O)
@@ -105,40 +82,37 @@ function Base.read(tf::TiffFile, ::Type{Tag{O}}) where O <: Unsigned
         if tf.need_bswap
             reverse!(view(data, 1:nbytes))
         end
-        Tag(tag, T, count, data, true)
+        if T == String
+            return Tag(tag, String(data))
+        elseif T == Any
+            return Tag(tag, Array{Any}(data))
+        elseif count == 1
+            return Tag(tag, first(reinterpret(T, data)))
+        else
+            return Tag(tag, Array(reinterpret(T, data)[1:Int(count)]))
+        end
     else
         (tf.need_bswap) && reverse!(data)
-        Tag(tag, T, count, data, false)
+        return Tag(tag, RemoteData(first(reinterpret(O, data)), T, count))
     end
 end
 
-function Base.show(io::IO, t::Tag{O}) where {O}
+_showdata(io::IO, t::Tag{RemoteData{O}}) where {O} = print(io, "REMOTE@$(t.data.position) $(t.data.datatype)[] len=$(t.data.count)") 
+_showdata(io::IO, t::Tag{<: AbstractString}) = print(io, "\"", first(t.data, 20), (length(t.data) > 20) ? "..." : "", "\"")
+_showdata(io::IO, t::Tag{<: AbstractVector}) = print(io, "$(eltype(t.data))[", join(t.data[1:min(5, end)], ", "), (length(t.data) > 5) ? ", ..." : "", "]")
+_showdata(io::IO, t::Tag) = print(io, t.data)
+
+function Base.show(io::IO, t::Tag) 
     print(io, "Tag(")
     try
         print(io, TiffTag(t.tag), ", ")
     catch
         print(io, "UNKNOWN($(Int(t.tag))), ")
     end
-    print(io, t.datatype, ", ")
-    print(io, Int(t.count), ", ")
     if t.tag == Int(COMPRESSION)
-        print(io, CompressionType(first(t.data)))
+        print(io, CompressionType(t.data))
     else
-        if t.loaded
-            if t.count > 1 
-                if t.datatype == String
-                    print(io, "\"", first(t.data, 20), "\"")
-                else
-                    print(io, "[", join(t.data[1:min(5, end)], ", "), (length(t.data) > 5) ? ", ..." : "", "]")
-                end
-            elseif t.count == 1
-                print(io, first(t.data))
-            else
-                print(io, """\"\"""")
-            end
-        else
-            print(io, "***")
-        end
+        _showdata(io, t)
     end
     print(io, ")")
 end
@@ -149,18 +123,21 @@ end
 Write tag `t` to the tiff file `tf`. Returns `true` if the tag data fit
 entirely in the IFD space and was written to disk. Otherwise it returns false.
 """
-function Base.write(tf::TiffFile{O}, t::Tag{O}) where O <: Unsigned
+function Base.write(tf::TiffFile{O}, t::Tag{T}) where {O <: Unsigned, T}
     # if the data are too large to fit then we'll need to skip writing this tag
     # for now until we know the length of the entire IFD
-    if t.loaded && length(t.data)*bytes(t.datatype) > sizeof(O)
+    if length(t)*bytes(T) > sizeof(O)
         _writeblank(tf)
         return false
     end
 
+    # add zero padding to the end of Strings
+    data = T == String ? t.data * "\0" : t.data
+
     write(tf, t.tag)
-    write(tf, julian_to_tiff[t.datatype])
-    write(tf, t.count)
-    nbytes = write(tf, getfield(t, :data))
+    write(tf, julian_to_tiff[eltype(T)])
+    write(tf, O(length(t)))
+    nbytes = write(tf.io, data)
 
     # write padding
     if nbytes < sizeof(O)
@@ -169,8 +146,17 @@ function Base.write(tf::TiffFile{O}, t::Tag{O}) where O <: Unsigned
     true
 end
 
-function Base.write(tf::TiffFile, t::Tag{O}, offset) where {O <: Unsigned}
-    write(tf, Tag(t.tag, t.datatype, t.count, Array(reinterpret(UInt8, [O(offset)])), false))
+function Base.write(tf::TiffFile{O}, t::Tag{RemoteData{O}}) where {O <: Unsigned}
+    write(tf, t.tag)
+    write(tf, julian_to_tiff[t.data.datatype])
+    write(tf, t.data.count)
+    write(tf, t.data.position)
+    true
+end
+
+
+function Base.write(tf::TiffFile{O}, t::Tag, offset) where {O <: Unsigned}
+    write(tf, Tag(t.tag, RemoteData(O(offset), eltype(t), O(length(t)))))
 end
 
 # Base.write(tf::TiffFile, t::Tag) = error("Tag offsets must agree with file offsets")

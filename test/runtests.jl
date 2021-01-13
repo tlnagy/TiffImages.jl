@@ -11,6 +11,10 @@ doctest(TiffImages)
 
 get_example(name) = download("https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true")
 
+@testset "Tag loading" begin
+    include("tags.jl")
+end
+
 @testset "Gray with ExtraSample" begin
     filepath = get_example("house.tif")
     img = TiffImages.load(filepath)

@@ -40,7 +40,7 @@ function load(io::IOStream; verbose=true, mmap = false)
         ifd = ifds[1]
         raw = rawtype(ifd)
         loadedr = reinterpret(raw, loaded)
-        maxdepth = 2^(first(ifd[BITSPERSAMPLE].data))-1
+        maxdepth = 2^(Int(ifd[BITSPERSAMPLE].data))-1
         colors = ifd[COLORMAP].data
         color_map = vec(reinterpret(RGB{N0f16}, reshape(colors, :, 3)'))
         data = IndirectArray(loadedr, OffsetArray(color_map, 0:maxdepth))

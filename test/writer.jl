@@ -1,29 +1,29 @@
 @testset "tags" begin
     @testset "exact fit tags" begin
         tf = TiffImages.TiffFile(UInt32)
-        t1 = TiffImages.Tag{UInt32}(UInt16(TiffImages.IMAGEWIDTH), UInt32, 1, UInt8[0,2,0,0], true)
+        t1 = TiffImages.Tag(UInt16(TiffImages.IMAGEWIDTH), 0x00000200)
         @test write(tf, t1) # should fit so true
 
         seekstart(tf.io)
-        t2 = read(tf, TiffImages.Tag{UInt32})
+        t2 = read(tf, TiffImages.Tag)
         @test t1 == t2
     end
 
     @testset "small tags" begin
         tf = TiffImages.TiffFile(UInt32)
-        t1 = TiffImages.Tag{UInt32}(UInt16(TiffImages.COMPRESSION), UInt16, 1, [0x01, 0x00], true)
+        t1 = TiffImages.Tag(UInt16(TiffImages.COMPRESSION), 0x0001)
         @test write(tf, t1) # should fit but needs padding
         @test position(tf.io) == 12 # should be full length
 
         seekstart(tf.io)
-        t2 = read(tf, TiffImages.Tag{UInt32})
-        @test t2.data == [0x0001, 0x0000]
+        t2 = read(tf, TiffImages.Tag)
+        @test t2.data == 0x0001
     end
 
     @testset "large tags" begin
         tf = TiffImages.TiffFile(UInt32)
         offsets = UInt32[8, 129848, 259688, 389528]
-        t1 = TiffImages.Tag{UInt32}(UInt16(TiffImages.STRIPOFFSETS), UInt32, 4, Array(reinterpret(UInt8, offsets)), true)
+        t1 = TiffImages.Tag(UInt16(TiffImages.STRIPOFFSETS), offsets)
 
         @test !write(tf, t1) # should fail to write into tf since it's too large
         @test position(tf.io) == 12
@@ -38,10 +38,11 @@
         @test write(tf, t1, 12)
 
         seekstart(tf.io)
-        t2 = read(tf, TiffImages.Tag{UInt32})
+        t2 = read(tf, TiffImages.Tag)
 
         # make sure the data field contains our single offset from above
-        @test Int.(reinterpret(UInt32, getfield(t2, :data))) == [12]
+        @test typeof(t2.data) <: TiffImages.RemoteData
+        @test t2.data.position == 12
     end
 end
 

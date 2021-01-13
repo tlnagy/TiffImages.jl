@@ -5,10 +5,10 @@ An image file directory is a sorted collection of the tags representing this
 plane in the TIFF file.
 """
 struct IFD{O <: Unsigned}
-    tags::OrderedDict{UInt16, Tag{O}}
+    tags::OrderedDict{UInt16, Tag}
 end
 
-IFD(o::Type{O}) where {O <: Unsigned} = IFD{O}(OrderedDict{UInt16, Tag{O}}())
+IFD(o::Type{O}) where {O <: Unsigned} = IFD{O}(OrderedDict{UInt16, Tag}())
 
 Base.length(ifd::IFD) = length(ifd.tags)
 Base.keys(ifd::IFD) = keys(ifd.tags)
@@ -26,21 +26,18 @@ Base.setindex!(ifd::IFD, value::Tag, key::TiffTag) = setindex!(ifd.tags, value, 
 
 Base.setindex!(ifd::IFD, value, key::TiffTag) = setindex!(ifd, value, UInt16(key))
 function Base.setindex!(ifd::IFD{O}, value, key::UInt16) where {O <: Unsigned}
-    setindex!(ifd, Tag{O}(key, value), UInt16(key))
+    setindex!(ifd, Tag(key, value), UInt16(key))
 end
 
 
 function load!(tf::TiffFile, ifd::IFD)
     for idx in keys(ifd)
-        tag = ifd[idx]
-        if !tag.loaded
-            ifd[idx] = load(tf, tag)
-        end
+        ifd[idx] = load(tf, ifd[idx])
     end
 end
 
 function Base.show(io::IO, ifd::IFD)
-    print(io, "IFD, with tags: (* indicates remote data)")
+    print(io, "IFD, with tags: ")
     for tag in sort(collect(keys(ifd)))
         print(io, "\n\t", ifd[tag])
     end
@@ -50,15 +47,15 @@ function Base.read(tf::TiffFile{O}, ::Type{IFD}) where O <: Unsigned
     # Regular TIFF's use 16bits instead of 32 bits for entry data
     N = O == UInt32 ? read(tf, UInt16) : read(tf, O)
 
-    entries = OrderedDict{UInt16, Tag{O}}()
+    entries = OrderedDict{UInt16, Tag}()
 
     for i in 1:N
-        tag = read(tf, Tag{O})
+        tag = read(tf, Tag)
         entries[tag.tag] = tag
     end
 
     next_ifd = Int(read(tf, O))
-    IFD(entries), next_ifd
+    IFD{O}(entries), next_ifd
 end
 
 function Base.iterate(file::TiffFile{O}) where {O}
@@ -101,16 +98,16 @@ struct IFDLayout
 end
 
 function output(ifd::IFD)
-    nrows = Int(first(ifd[IMAGELENGTH].data))
-    ncols = Int(first(ifd[IMAGEWIDTH].data))
+    nrows = Int(ifd[IMAGELENGTH].data)
+    ncols = Int(ifd[IMAGEWIDTH].data)
 
-    samplesperpixel = first(ifd[SAMPLESPERPIXEL].data)
+    samplesperpixel = Int(ifd[SAMPLESPERPIXEL].data)
     sampleformats = fill(UInt16(0x01), samplesperpixel)
     if SAMPLEFORMAT in ifd
         sampleformats = ifd[SAMPLEFORMAT].data
     end
 
-    interpretation = first(ifd[PHOTOMETRIC].data)
+    interpretation = Int(ifd[PHOTOMETRIC].data)
 
     strip_nbytes = ifd[STRIPBYTECOUNTS].data
     nbytes = Int(sum(strip_nbytes))
@@ -132,7 +129,7 @@ function output(ifd::IFD)
     rawtype = first(rawtypes)
     readtype = rawtype
 
-    compression = CompressionType(first(ifd[COMPRESSION].data))
+    compression = CompressionType(ifd[COMPRESSION].data)
 
     if compression != COMPRESSION_NONE
         # recalculate nbytes if the data is compressed since the inflated data
@@ -155,7 +152,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
     layout = output(ifd)
 
     rowsperstrip = layout.nrows
-    (ROWSPERSTRIP in keys(ifd)) && (rowsperstrip = first(ifd[ROWSPERSTRIP].data))
+    (ROWSPERSTRIP in keys(ifd)) && (rowsperstrip = ifd[ROWSPERSTRIP].data)
     nstrips = ceil(Int, layout.nrows / rowsperstrip)
 
     strip_nbytes = ifd[STRIPBYTECOUNTS].data
@@ -163,14 +160,14 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
     if layout.compression != COMPRESSION_NONE
         # strip_nbytes is the number of bytes pre-inflation so we need to
         # calculate the expected size once decompressed and update the values
-        fill!(strip_nbytes, rowsperstrip*layout.ncols)
+        strip_nbytes = fill(rowsperstrip*layout.ncols, length(strip_nbytes))
         strip_nbytes[end] = (layout.nrows - (rowsperstrip * (nstrips-1))) * layout.ncols
     end
 
     strip_offsets = ifd[STRIPOFFSETS].data
 
     if PLANARCONFIG in ifd
-        planarconfig = first(ifd[PLANARCONFIG].data)
+        planarconfig = ifd[PLANARCONFIG].data
         (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
     end
 
