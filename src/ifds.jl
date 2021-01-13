@@ -2,7 +2,19 @@
     $(TYPEDEF)
 
 An image file directory is a sorted collection of the tags representing this
-plane in the TIFF file.
+plane in the TIFF file. They behave like dictionaries, so given an IFD called
+`ifd`, we can add new tags as follows:
+
+```jldoctest; setup = :(ifd = TiffImages.IFD(UInt32))
+julia> ifd[TiffImages.IMAGEDESCRIPTION] = "Some details";
+
+julia> ifd[TiffImages.IMAGEWIDTH] = 512;
+
+julia> ifd
+IFD, with tags: 
+	Tag(IMAGEWIDTH, 512)
+	Tag(IMAGEDESCRIPTION, "Some details")
+```
 """
 struct IFD{O <: Unsigned}
     tags::OrderedDict{UInt16, Tag}

@@ -1,6 +1,10 @@
 """
     $(TYPEDEF)
 
+In-memory representation of Tiff Tags, which are essentially key value pairs.
+The `data` field can either be a `String`, a `Number`, an Array of bitstypes, or
+a [`RemoteData`](@ref) type.
+
 $FIELDS
 """
 struct Tag{T}
