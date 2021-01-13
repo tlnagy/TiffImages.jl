@@ -1,6 +1,6 @@
-nrows(ifd::IFD) = Int(first(ifd[IMAGELENGTH].data))
-ncols(ifd::IFD) = Int(first(ifd[IMAGEWIDTH].data))
-nsamples(ifd::IFD) = Int(first(ifd[SAMPLESPERPIXEL].data))
+nrows(ifd::IFD) = Int(ifd[IMAGELENGTH].data)
+ncols(ifd::IFD) = Int(ifd[IMAGEWIDTH].data)
+nsamples(ifd::IFD) = Int(ifd[SAMPLESPERPIXEL].data)
 
 """
     interpretation(ifd)
@@ -10,11 +10,11 @@ It returns subtypes of `Colorant` depending on the values of the tiff tags and
 whether there are extrasamples it doesn't know how to deal with.
 """
 function interpretation(ifd::IFD)
-    interp = PhotometricInterpretations(first(ifd[PHOTOMETRIC].data))
+    interp = PhotometricInterpretations(ifd[PHOTOMETRIC].data)
     extras = EXTRASAMPLE_UNSPECIFIED
     if EXTRASAMPLES in ifd
         try
-            extras = ExtraSamples(first(ifd[EXTRASAMPLES].data))
+            extras = ExtraSamples(ifd[EXTRASAMPLES].data)
         catch
             extras = EXTRASAMPLE_ASSOCALPHA
         end

@@ -1,4 +1,26 @@
 """
+    RemoteData
+
+A placeholder type to describe the location and properties of remote data that
+is too large to fit directly in a tag's spot in the IFD. Calling [`load!`](@ref)
+on an IFD object replaces all `RemoteData`s with the respective data.
+
+$(FIELDS)
+"""
+struct RemoteData{O <: Unsigned}
+    """Position of this data in the stream"""
+    position::O
+
+    """The datatype stored at this location"""
+    datatype::DataType
+
+    """The length of the data"""
+    count::O
+end
+
+Base.position(o::RemoteData) = Int(o.pos)
+
+"""
     extract_filename(io) -> String
 
 Extract the name of the file backing a stream
