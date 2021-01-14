@@ -54,6 +54,10 @@ end
     ifd[TiffImages.IMAGELENGTH] = UInt32(512)
     ifd[TiffImages.XRESOLUTION] = Rational{UInt32}(72, 1)
     ifd[TiffImages.COMPRESSION] = TiffImages.COMPRESSION_NONE
+    ifd[TiffImages.SAMPLESPERPIXEL] = 1
+    ifd[TiffImages.PHOTOMETRIC] = TiffImages.PHOTOMETRIC_MINISBLACK
+    ifd[TiffImages.STRIPBYTECOUNTS] = UInt32[512*512]
+    ifd[TiffImages.BITSPERSAMPLE] = 8
     ifd[TiffImages.ICCPROFILE] = Any[0x00, 0x00, 0x0b, 0xe8, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x6d]
 
     write(tf, ifd)
@@ -63,6 +67,16 @@ end
     TiffImages.load!(tf, read_ifd)
 
     @test all(ifd .== read_ifd)
+
+    expected = TiffImages.IFDLayout(1, 512, 512, 262144, 
+                                    UInt8, UInt8, FixedPointNumbers.Normed{UInt8,8}, 
+                                    TiffImages.COMPRESSION_NONE, 
+                                    TiffImages.PHOTOMETRIC_MINISBLACK)
+    @test TiffImages.output(ifd) == expected
+
+    delete!(ifd, TiffImages.COMPRESSION)
+
+    @test TiffImages.output(ifd) == expected
 end
 
 @testset "Simple 2D image" begin
