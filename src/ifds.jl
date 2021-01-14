@@ -141,7 +141,10 @@ function output(ifd::IFD)
     rawtype = first(rawtypes)
     readtype = rawtype
 
-    compression = CompressionType(ifd[COMPRESSION].data)
+    compression = COMPRESSION_NONE
+    if COMPRESSION in ifd
+        compression = CompressionType(ifd[COMPRESSION].data)
+    end
 
     if compression != COMPRESSION_NONE
         # recalculate nbytes if the data is compressed since the inflated data
