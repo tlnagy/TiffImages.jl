@@ -54,6 +54,7 @@ end
     ifd[TiffImages.IMAGELENGTH] = UInt32(512)
     ifd[TiffImages.XRESOLUTION] = Rational{UInt32}(72, 1)
     ifd[TiffImages.COMPRESSION] = TiffImages.COMPRESSION_NONE
+    ifd[TiffImages.ICCPROFILE] = Any[0x00, 0x00, 0x0b, 0xe8, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x6d]
 
     write(tf, ifd)
 
