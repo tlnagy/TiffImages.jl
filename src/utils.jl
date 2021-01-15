@@ -20,12 +20,24 @@ end
 
 Base.position(o::RemoteData) = Int(o.pos)
 
+const filepattern = r"<file (.*)>"
+const fdpattern = r"<fd (.*)>"
+
 """
     extract_filename(io) -> String
 
 Extract the name of the file backing a stream
 """
-extract_filename(io::IOStream) = split(io.name, " ")[2][1:end-1]
+function extract_filename(io::IOStream)
+    filename = match(filepattern, io.name)
+    if filename !== nothing
+        return filename[1]
+    elseif match(fdpattern, io.name) !== nothing
+        return ""
+    else
+        error("Can't extract filename from the given stream")
+    end
+end
 extract_filename(io::Stream) = io.filename
 
 """
