@@ -44,6 +44,26 @@
         @test typeof(t2.data) <: TiffImages.RemoteData
         @test t2.data.position == 12
     end
+
+    @testset "String length equal to offset size" begin
+        tf = TiffImages.TiffFile(UInt32)
+        t1 = TiffImages.Tag(TiffImages.SOFTWARE, "test")
+
+        # should fail because it's too large to fit
+        @test !write(tf, t1)
+        @test position(tf.io) == 12
+
+        t3 = TiffImages.Tag(TiffImages.SOFTWARE, "tes\0")
+        seekstart(tf.io)
+        @test write(tf, t3)
+        @test position(tf.io) == 12
+
+        seekstart(tf.io)
+        t4 = read(tf, TiffImages.Tag)
+
+        # Since this is a NUL-terminated string of length 4 it should fit
+        @test t4.data == "tes\0"
+    end
 end
 
 @testset "ifds" begin
@@ -62,15 +82,17 @@ end
 
     write(tf, ifd)
 
+    ifd[TiffImages.IMAGEDESCRIPTION] = ifd[TiffImages.IMAGEDESCRIPTION].data * "\0"
+
     seekstart(tf.io)
     read_ifd, next_ifd = read(tf, TiffImages.IFD)
     TiffImages.load!(tf, read_ifd)
 
     @test all(ifd .== read_ifd)
 
-    expected = TiffImages.IFDLayout(1, 512, 512, 262144, 
-                                    UInt8, UInt8, FixedPointNumbers.Normed{UInt8,8}, 
-                                    TiffImages.COMPRESSION_NONE, 
+    expected = TiffImages.IFDLayout(1, 512, 512, 262144,
+                                    UInt8, UInt8, FixedPointNumbers.Normed{UInt8,8},
+                                    TiffImages.COMPRESSION_NONE,
                                     TiffImages.PHOTOMETRIC_MINISBLACK)
     @test TiffImages.output(ifd) == expected
 

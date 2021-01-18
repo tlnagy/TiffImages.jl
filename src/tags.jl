@@ -13,17 +13,18 @@ struct Tag{T}
 end
 
 Tag(tag::TiffTag, data) = Tag(UInt16(tag), data)
-Tag(tag::UInt16, data::String) = Tag{String}(tag, data) 
-Tag(tag::UInt16, data::T) where {T <: Enum} = Tag{UInt16}(tag, UInt16(data)) 
-function Tag(tag::UInt16, data::AbstractVector{T}) where {T} 
-    if length(data) == 1 
+Tag(tag::UInt16, data::String) = Tag{String}(tag, data)
+Tag(tag::UInt16, data::T) where {T <: Enum} = Tag{UInt16}(tag, UInt16(data))
+function Tag(tag::UInt16, data::AbstractVector{T}) where {T}
+    if length(data) == 1
         Tag{T}(tag, first(data))
-    else 
-        Tag{Vector{T}}(tag, data) 
+    else
+        Tag{Vector{T}}(tag, data)
     end
 end
 
-Base.length(t::Union{Tag{<: AbstractVector}, Tag{<: AbstractString}}) = length(t.data)
+Base.length(t::Tag{<: AbstractVector}) = length(t.data)
+Base.length(t::Tag{<: AbstractString}) = (endswith(t.data, '\0') ? length(t.data) : length(t.data) + 1)
 Base.length(t::Tag) = 1
 
 Base.eltype(::Tag{T}) where {T} = T
@@ -43,7 +44,7 @@ function load(tf::TiffFile{O}, t::Tag{RemoteData{O}}) where {O <: Unsigned}
 
     # if this datatype is comprised of multiple bytes and this file needs to be
     # bitswapped then we'll need to reverse the byte order inside each datatype
-    # unit 
+    # unit
     if tf.need_bswap && bytes(T) >= 2
         reverse!(rawdata)
         data = Array{T}(reverse(reinterpret(T, rawdata)))
@@ -101,12 +102,12 @@ function Base.read(tf::TiffFile{O}, ::Type{Tag}) where O <: Unsigned
     end
 end
 
-_showdata(io::IO, t::Tag{RemoteData{O}}) where {O} = print(io, "REMOTE@$(t.data.position) $(t.data.datatype)[] len=$(t.data.count)") 
+_showdata(io::IO, t::Tag{RemoteData{O}}) where {O} = print(io, "REMOTE@$(t.data.position) $(t.data.datatype)[] len=$(t.data.count)")
 _showdata(io::IO, t::Tag{<: AbstractString}) = print(io, "\"", first(t.data, 20), (length(t.data) > 20) ? "..." : "", "\"")
 _showdata(io::IO, t::Tag{<: AbstractVector}) = print(io, "$(eltype(t.data))[", join(t.data[1:min(5, end)], ", "), (length(t.data) > 5) ? ", ..." : "", "]")
 _showdata(io::IO, t::Tag) = print(io, t.data)
 
-function Base.show(io::IO, t::Tag) 
+function Base.show(io::IO, t::Tag)
     print(io, "Tag(")
     try
         print(io, TiffTag(t.tag), ", ")
@@ -135,11 +136,11 @@ function Base.write(tf::TiffFile{O}, t::Tag{T}) where {O <: Unsigned, T}
         return false
     end
 
-    # add zero padding to the end of Strings
-    data = T == String ? t.data * "\0" : t.data
+    # add NUL terminator to the end of Strings that don't have it already
+    data = (T == String && !endswith(t.data, '\0')) ? t.data * "\0" : t.data
 
     write(tf, t.tag)
-    write(tf, julian_to_tiff[eltype(T)])
+    write(tf, julian_to_tiff[eltype(t)])
     write(tf, O(length(t)))
     nbytes = write(tf.io, data)
 
