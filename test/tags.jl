@@ -24,7 +24,7 @@ end
 end
 
 @testset "Rational, full space" begin
-    tf = TiffImages.TiffFile(UInt64) 
+    tf = TiffImages.TiffFile(UInt64)
     write(tf, UInt16(TiffImages.XRESOLUTION))
     write(tf, 0x0005)
     write(tf, UInt64(1))

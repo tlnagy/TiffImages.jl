@@ -11,7 +11,7 @@ julia> ifd[TiffImages.IMAGEDESCRIPTION] = "Some details";
 julia> ifd[TiffImages.IMAGEWIDTH] = 512;
 
 julia> ifd
-IFD, with tags: 
+IFD, with tags:
 	Tag(IMAGEWIDTH, 512)
 	Tag(IMAGEDESCRIPTION, "Some details")
 ```
@@ -223,7 +223,9 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
 
     for (tag, poses) in remotedata
         data_pos = position(tf.io)
-        write(tf, tag.data)
+        # add NUL terminator to the end of Strings that don't have it already
+        data = (eltype(tag) == String && !endswith(tag.data, '\0')) ? tag.data * "\0" : tag.data
+        write(tf, data)
         push!(poses, data_pos)
     end
 
