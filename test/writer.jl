@@ -62,7 +62,8 @@
         t4 = read(tf, TiffImages.Tag)
 
         # Since this is a NUL-terminated string of length 4 it should fit
-        @test t4.data == "tes\0"
+        @test getfield(t4, :data) == "tes\0"
+        @test t4.data == "tes"
     end
 end
 
@@ -81,8 +82,6 @@ end
     ifd[TiffImages.ICCPROFILE] = Any[0x00, 0x00, 0x0b, 0xe8, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x6d]
 
     write(tf, ifd)
-
-    ifd[TiffImages.IMAGEDESCRIPTION] = ifd[TiffImages.IMAGEDESCRIPTION].data * "\0"
 
     seekstart(tf.io)
     read_ifd, next_ifd = read(tf, TiffImages.IFD)
