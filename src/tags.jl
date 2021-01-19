@@ -23,6 +23,15 @@ function Tag(tag::UInt16, data::AbstractVector{T}) where {T}
     end
 end
 
+function Base.getproperty(t::Tag{<: AbstractString}, f::Symbol)
+    if f == :data
+        # strip NUL terminators from the end of strings
+        strip(getfield(t, :data), '\0')
+    else
+        getfield(t, f)
+    end
+end
+
 Base.length(t::Tag{<: AbstractVector}) = length(t.data)
 Base.length(t::Tag{<: AbstractString}) = (endswith(t.data, '\0') ? length(t.data) : length(t.data) + 1)
 Base.length(t::Tag) = 1
@@ -174,5 +183,5 @@ end
 
 const tagfields = fieldnames(Tag)
 function Base.:(==)(t1::Tag{O1}, t2::Tag{O2}) where {O1, O2}
-    return O1 == O2 && getfield.(Ref(t1), tagfields) == getfield.(Ref(t2), tagfields)
+    return O1 == O2 && getproperty.(Ref(t1), tagfields) == getproperty.(Ref(t2), tagfields)
 end
