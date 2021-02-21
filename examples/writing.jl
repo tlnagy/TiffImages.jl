@@ -76,9 +76,7 @@ ifd
 #
 # Once you're happy with your TIFF object, you can write it to disk as follows:
 
-open("test.tif", "w") do io
-    write(io, img)
-end
+TiffImages.save("test.tif", img)
 
 # And to just double check, we can load it right back in
 
