@@ -33,7 +33,7 @@ end
 
     @testset "Multiple planes" begin
         # test slice based access
-        @test Gray(mean(img[:, :, 2])) == Gray{Float32}(0.25676906f0)
+        @test red(img[92, 21, 2]) == 0.74118N0f16
 
         # make sure IFDs are included if whole slice is grabbed
         @test length(img[:, :, 2].ifds) == 1
