@@ -110,3 +110,6 @@ function Base.write(io::Stream, img::DenseTaggedImage)
         seekend(tf.io)
     end
 end
+
+save(io::IO, data) where {IO <: Union{IOStream, Stream}} = write(io, DenseTaggedImage(data))
+save(filepath::String, data) = save(Stream(format"TIFF", open(filepath, "w"), filepath), data)

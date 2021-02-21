@@ -133,3 +133,11 @@ end
     img3 = TiffImages.load(path)
     @test eltype(img3) == GrayA{N0f8}
 end
+
+@testset "save function" begin
+    data = rand(RGB{N0f8}, 128, 128)
+    filepath = tempname()
+
+    TiffImages.save(filepath, data)
+    @test all(data .== TiffImages.load(filepath))
+end
