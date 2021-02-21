@@ -39,4 +39,5 @@ makedocs(
 
 deploydocs(
     repo = "github.com/tlnagy/TiffImages.jl.git",
+    push_preview = true
 )
