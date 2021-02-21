@@ -2,7 +2,7 @@
 
 | **Stable release** | **Documentation**                 | **Build Status**                                              |
 |:------------------------------------------------------|:-------------------------------------------------------------------------|:--------------------------------------------------------------|
-| ![](https://juliahub.com/docs/TiffImages/version.svg) | [![][docs-stable-img]][docs-stable-url][![][docs-dev-img]][docs-dev-url] | [![][status-img]][status-url] [![][travis-img]][travis-url] [![][codecov-img]][codecov-url] |
+| ![](https://juliahub.com/docs/TiffImages/version.svg) | [![][docs-stable-img]][docs-stable-url][![][docs-dev-img]][docs-dev-url] | [![][status-img]][status-url] [![][ci-img]][ci-url] [![][codecov-img]][codecov-url] |
 
 This package aims to be a fast, minimal, and correct TIFF reader and writer
 written in Julia.
@@ -33,8 +33,8 @@ Please see the documentation above for usage details and examples
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://tamasnagy.com/TiffImages.jl/dev
 
-[travis-img]: https://travis-ci.com/tlnagy/TiffImages.jl.svg?branch=master
-[travis-url]: https://travis-ci.com/tlnagy/TiffImages.jl
+[ci-img]: https://github.com/tlnagy/TiffImages.jl/workflows/CI/badge.svg
+[ci-url]: https://github.com/tlnagy/TiffImages.jl/actions
 
 [codecov-img]: https://codecov.io/gh/tlnagy/TiffImages.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/tlnagy/TiffImages.jl
