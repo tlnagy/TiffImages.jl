@@ -91,7 +91,7 @@ function Base.write(io::Stream, img::DenseTaggedImage)
     for (idx, ifd) in enumerate(img.ifds)
         data_pos = position(tf.io) # start of data
 
-        write(tf, reinterpret(UInt8, permutedims(view(img.data, :, :, idx), [2, 1]))) # write data
+        write(tf, reinterpret(UInt8, PermutedDimsArray(view(img.data, :, :, idx), (2, 1)))) # write data
         ifd_pos = position(tf.io)
 
         # update record of previous IFD to point to this new IFD
