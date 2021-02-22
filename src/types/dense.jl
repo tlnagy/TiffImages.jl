@@ -48,7 +48,7 @@ Generate a IFD with the minimal set of tags to describe `data`.
 """
 function _constructifd(data::AbstractArray{T, 3}) where {T <: Colorant}
     offset = UInt32
-    if sizeof(T) * length(data) >= 3.8*10^9 
+    if sizeof(T) * length(data) >= 3.8*10^9
         @info "Array too large to fit in standard TIFF container, switching to BigTIFF"
         offset = UInt64
     end
@@ -95,7 +95,7 @@ function Base.write(io::Stream, img::DenseTaggedImage)
         ifd_pos = position(tf.io)
 
         # update record of previous IFD to point to this new IFD
-        seek(tf.io, prev_ifd_record) 
+        seek(tf.io, prev_ifd_record)
         write(tf, O(ifd_pos))
 
         ifd = first(img.ifds)
@@ -113,4 +113,9 @@ end
 
 save(io::IO, data::DenseTaggedImage) where {IO <: Union{IOStream, Stream}} = write(io, data)
 save(io::IO, data) where {IO <: Union{IOStream, Stream}} = save(io, DenseTaggedImage(data))
-save(filepath::String, data) = save(Stream(format"TIFF", open(filepath, "w"), filepath), data)
+function save(filepath::String, data::DenseTaggedImage)
+    open(filepath, "w") do io
+        write(io, data)
+    end
+end
+save(filepath::String, data) = save(filepath, DenseTaggedImage(data))
