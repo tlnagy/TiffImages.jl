@@ -31,4 +31,9 @@ include("load.jl")
 
 @deprecate TiffFile(::Type{O}) where O<:Unsigned TiffFile{O}()
 
+if Base.VERSION >= v"1.6.0-dev"
+    include("precompile.jl")
+    _precompile_()
+end
+
 end # module
