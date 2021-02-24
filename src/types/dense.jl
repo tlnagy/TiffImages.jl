@@ -1,20 +1,16 @@
 using Base: @propagate_inbounds
 
-struct DenseTaggedImage{T, N, O <: Unsigned,AA <: AbstractArray} <: AbstractDenseTIFF{T, N}
+struct DenseTaggedImage{T, N, O <: Unsigned, AA <: AbstractArray} <: AbstractDenseTIFF{T, N}
     data::AA
     ifds::Vector{IFD{O}}
-    pagecache::Matrix{UInt8}
 
     function DenseTaggedImage(data::AbstractArray{T, N}, ifds::Vector{IFD{O}}) where {T, N, O}
         if N == 3
-            d1, d2, d3 = size(data)
-            @assert d3 == length(ifds)
+            @assert size(data, 3) == length(ifds)
         elseif N == 2
-            d1, d2 = size(data)
             @assert length(ifds) == 1
         end
-        pagecache = Matrix{UInt8}(undef, d2 * sizeof(T), d1)
-        new{T, N, O, typeof(data)}(data, ifds, pagecache)
+        new{T, N, O, typeof(data)}(data, ifds)
     end
 end
 
@@ -92,10 +88,12 @@ function Base.write(io::Stream, img::DenseTaggedImage)
 
     prev_ifd_record = write(tf) # record that will have be updated
 
+    pagecache = Matrix{UInt8}(undef, size(img.data, 2) * sizeof(eltype(img.data)), size(img.data, 1))
+
     for (idx, ifd) in enumerate(img.ifds)
         data_pos = position(tf.io) # start of data
-        img.pagecache .= reinterpret(UInt8, PermutedDimsArray(view(img.data, :, :, idx), (2, 1)))
-        write(tf, img.pagecache) # write data
+        pagecache .= reinterpret(UInt8, PermutedDimsArray(view(img.data, :, :, idx), (2, 1)))
+        write(tf, pagecache) # write data
         ifd_pos = position(tf.io)
 
         # update record of previous IFD to point to this new IFD
