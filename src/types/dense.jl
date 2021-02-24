@@ -13,7 +13,7 @@ struct DenseTaggedImage{T, N, O <: Unsigned,AA <: AbstractArray} <: AbstractDens
             d1, d2 = size(data)
             @assert length(ifds) == 1
         end
-        pagecache = Matrix{UInt8}(undef, d2 * length(T), d1)
+        pagecache = Matrix{UInt8}(undef, d2 * sizeof(T), d1)
         new{T, N, O, typeof(data)}(data, ifds, pagecache)
     end
 end
