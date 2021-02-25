@@ -4,9 +4,8 @@ function load(filepath::String; verbose=true, mmap = false)
     end
 end
 
-function load(io::IOStream; verbose=true, mmap = false)
-    tf = read(io, TiffFile)
-
+load(io::IOStream; verbose=true, mmap = false) = load(read(io, TiffFile); verbose=verbose, mmap=mmap)
+function load(tf::TiffFile; verbose=true, mmap = false)
     isdense = true
     ifds = IFD{offset(tf)}[]
 

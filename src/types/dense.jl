@@ -83,8 +83,7 @@ Base.write(io::IOStream, img::DenseTaggedImage) = write(Stream(format"TIFF", io,
 
 function Base.write(io::Stream, img::DenseTaggedImage)
     O = offset(img)
-    tf = TiffFile(O)
-    tf.io = io
+    tf = TiffFile{O}(io)
 
     prev_ifd_record = write(tf) # record that will have be updated
 

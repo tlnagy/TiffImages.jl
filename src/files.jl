@@ -5,12 +5,12 @@ Wrap `io` with helper parameters to keep track of file attributes.
 
 $(FIELDS)
 """
-mutable struct TiffFile{O <: Unsigned}
+mutable struct TiffFile{O <: Unsigned, S <: Stream}
     """The relative path to this file"""
     filepath::String
 
     """The file stream"""
-    io::Stream
+    io::S
 
     """Location of the first IFD in the file stream"""
     first_offset::Int
@@ -19,9 +19,9 @@ mutable struct TiffFile{O <: Unsigned}
     need_bswap::Bool
 end
 
-function TiffFile(offset_size::Type{O}) where O <: Unsigned
-    TiffFile{offset_size}("", Stream(format"TIFF", IOBuffer()), -1, false)
-end
+TiffFile{O}(s::Stream) where O <: Unsigned = TiffFile{O, typeof(s)}("", s, -1, false)
+TiffFile{O}(io::IO) where O <: Unsigned    = TiffFile{O}(Stream(format"TIFF", io))
+TiffFile{O}() where O <: Unsigned          = TiffFile{O}(IOBuffer())
 
 function Base.read(io::Stream, ::Type{TiffFile})
     seekstart(io)
@@ -30,7 +30,7 @@ function Base.read(io::Stream, ::Type{TiffFile})
     offset_size = offsetsize(io)
     first_offset_raw = read(io, offset_size)
     first_offset = Int(bs ? bswap(first_offset_raw) : first_offset_raw)
-    TiffFile{offset_size}(filepath, io, first_offset, bs)
+    TiffFile{offset_size, typeof(io)}(filepath, io, first_offset, bs)
 end
 
 Base.read(io::IOStream, t::Type{TiffFile}) = read(Stream(format"TIFF", io, extract_filename(io)), t)
