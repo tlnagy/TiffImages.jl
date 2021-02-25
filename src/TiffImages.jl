@@ -25,4 +25,6 @@ include(joinpath("types", "dense.jl"))
 include(joinpath("types", "mmap.jl"))
 include("load.jl")
 
+@deprecate TiffFile(::Type{O}) where O<:Unsigned TiffFile{O}()
+
 end # module

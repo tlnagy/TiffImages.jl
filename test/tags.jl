@@ -1,5 +1,5 @@
 @testset "Unspecified type" begin
-    tf = TiffImages.TiffFile(UInt32)
+    tf = TiffImages.TiffFile{UInt32}()
 
     write(tf, UInt16(TiffImages.IMAGEWIDTH))
     write(tf, 0x0007)
@@ -11,7 +11,7 @@
 end
 
 @testset "Data array only part of data field" begin
-    tf = TiffImages.TiffFile(UInt64)
+    tf = TiffImages.TiffFile{UInt64}()
 
     write(tf, UInt16(TiffImages.BITSPERSAMPLE))
     write(tf, 0x0003)
@@ -24,7 +24,7 @@ end
 end
 
 @testset "Rational, full space" begin
-    tf = TiffImages.TiffFile(UInt64)
+    tf = TiffImages.TiffFile{UInt64}()
     write(tf, UInt16(TiffImages.XRESOLUTION))
     write(tf, 0x0005)
     write(tf, UInt64(1))

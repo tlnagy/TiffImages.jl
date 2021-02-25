@@ -1,6 +1,6 @@
-nrows(ifd::IFD) = Int(ifd[IMAGELENGTH].data)
-ncols(ifd::IFD) = Int(ifd[IMAGEWIDTH].data)
-nsamples(ifd::IFD) = Int(ifd[SAMPLESPERPIXEL].data)
+nrows(ifd::IFD) = Int(ifd[IMAGELENGTH].data)::Int
+ncols(ifd::IFD) = Int(ifd[IMAGEWIDTH].data)::Int
+nsamples(ifd::IFD) = Int(ifd[SAMPLESPERPIXEL].data)::Int
 
 """
     interpretation(ifd)
@@ -36,8 +36,8 @@ interpretation(::Val{PHOTOMETRIC_YCBCR}) = YCbCr
 interpretation(::Val{PHOTOMETRIC_CIELAB}) = Lab
 
 function interpretation(p::PhotometricInterpretations, extrasamples::ExtraSamples, samplesperpixel::Int)
-    interp = interpretation(p)
-    len = length(interp)
+    interp = interpretation(p)::Type{<:Colorant}
+    len = length(interp)::Int
     if len + 1 == samplesperpixel
         return interpretation(p, extrasamples, Val(samplesperpixel))
     elseif len == samplesperpixel
@@ -45,16 +45,16 @@ function interpretation(p::PhotometricInterpretations, extrasamples::ExtraSample
     elseif len < samplesperpixel
         return interp, true
     else
-        error("TIFF file says it contains $interp values, but only has $samplesperpixel samples per pixel instead of the minimum required $(length(interp))")
+        error("TIFF file says it contains $interp values, but only has $samplesperpixel samples per pixel instead of the minimum required $len")
     end
 end
 _pad(::Type{RGB}) = RGBX
 _pad(::Type{T}) where {T} = T
 
 interpretation(p::PhotometricInterpretations, extrasamples::ExtraSamples, nsamples::Val) = interpretation(p, Val(extrasamples), nsamples)
-interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNSPECIFIED}, ::Val) = interpretation(p), true
+interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNSPECIFIED}, @nospecialize(::Val)) = interpretation(p), true
 interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNSPECIFIED}, ::Val{4}) = _pad(interpretation(p)), false
-interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_ASSOCALPHA}, ::Val) = coloralpha(interpretation(p)), false
+interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_ASSOCALPHA}, @nospecialize(::Val)) = coloralpha(interpretation(p)), false
 interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNASSALPHA}, nsamples::Val) = interpretation(p, Val(EXTRASAMPLE_ASSOCALPHA), nsamples)
 
 _mappedtype(::Type{T}) where {T} = T
@@ -76,10 +76,11 @@ end
 
 Allocate a cache for this IFD with correct type and size.
 """
-getcache(ifd::IFD) = getcache(ifd, Val(rawtype(ifd)))
-getcache(ifd::IFD, ::Val{Bool}) = BitArray(undef, ncols(ifd), nrows(ifd))
-function getcache(ifd::IFD, ::Val{T}) where {T}
+function getcache(ifd::IFD)
+    T = rawtype(ifd)
+    if T === Bool
+        return BitArray(undef, ncols(ifd), nrows(ifd))
+    end
     colortype, extras = interpretation(ifd)
-
-    Array{colortype{_mappedtype(T)}}(undef, ncols(ifd), nrows(ifd))
+    return Array{colortype{_mappedtype(T)}}(undef, ncols(ifd), nrows(ifd))
 end

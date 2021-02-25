@@ -1,6 +1,6 @@
 @testset "tags" begin
     @testset "exact fit tags" begin
-        tf = TiffImages.TiffFile(UInt32)
+        tf = TiffImages.TiffFile{UInt32}()
         t1 = TiffImages.Tag(UInt16(TiffImages.IMAGEWIDTH), 0x00000200)
         @test write(tf, t1) # should fit so true
 
@@ -10,7 +10,7 @@
     end
 
     @testset "small tags" begin
-        tf = TiffImages.TiffFile(UInt32)
+        tf = TiffImages.TiffFile{UInt32}()
         t1 = TiffImages.Tag(UInt16(TiffImages.COMPRESSION), 0x0001)
         @test write(tf, t1) # should fit but needs padding
         @test position(tf.io) == 12 # should be full length
@@ -21,7 +21,7 @@
     end
 
     @testset "large tags" begin
-        tf = TiffImages.TiffFile(UInt32)
+        tf = TiffImages.TiffFile{UInt32}()
         offsets = UInt32[8, 129848, 259688, 389528]
         t1 = TiffImages.Tag(UInt16(TiffImages.STRIPOFFSETS), offsets)
 
@@ -46,7 +46,7 @@
     end
 
     @testset "String length equal to offset size" begin
-        tf = TiffImages.TiffFile(UInt32)
+        tf = TiffImages.TiffFile{UInt32}()
         t1 = TiffImages.Tag(TiffImages.SOFTWARE, "test")
 
         # should fail because it's too large to fit
@@ -68,7 +68,7 @@
 end
 
 @testset "ifds" begin
-    tf = TiffImages.TiffFile(UInt32)
+    tf = TiffImages.TiffFile{UInt32}()
     ifd = TiffImages.IFD(UInt32)
     ifd[TiffImages.IMAGEDESCRIPTION] = "Testing IFD read/write"
     ifd[TiffImages.IMAGEWIDTH] = UInt32(512)

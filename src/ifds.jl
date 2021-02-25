@@ -24,8 +24,8 @@ IFD(o::Type{O}) where {O <: Unsigned} = IFD{O}(OrderedDict{UInt16, Tag}())
 
 Base.length(ifd::IFD) = length(ifd.tags)
 Base.keys(ifd::IFD) = keys(ifd.tags)
-Base.iterate(ifd::IFD) = iterate(ifd.tags)
-Base.iterate(ifd::IFD, n::Integer) = iterate(ifd.tags, n)
+Base.iterate(ifd::IFD) = iterate(ifd.tags)::Union{Nothing,Tuple{Pair{UInt16,<:Tag},Int}}
+Base.iterate(ifd::IFD, n::Int) = iterate(ifd.tags, n)::Union{Nothing,Tuple{Pair{UInt16,<:Tag},Int}}
 Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
 Base.getindex(ifd::IFD{O}, key::UInt16) where {O} = getindex(ifd.tags, key)
 Base.in(key::TiffTag, v::IFD) = in(UInt16(key), v)
@@ -110,22 +110,22 @@ struct IFDLayout
 end
 
 function output(ifd::IFD)
-    nrows = Int(ifd[IMAGELENGTH].data)
-    ncols = Int(ifd[IMAGEWIDTH].data)
+    nrows = Int(ifd[IMAGELENGTH].data)::Int
+    ncols = Int(ifd[IMAGEWIDTH].data)::Int
 
-    samplesperpixel = Int(ifd[SAMPLESPERPIXEL].data)
+    samplesperpixel = Int(ifd[SAMPLESPERPIXEL].data)::Int
     sampleformats = fill(UInt16(0x01), samplesperpixel)
     if SAMPLEFORMAT in ifd
-        sampleformats = ifd[SAMPLEFORMAT].data
+        sampleformats = ifd[SAMPLEFORMAT].data  # can a type be specified for this?
     end
 
-    interpretation = Int(ifd[PHOTOMETRIC].data)
+    interpretation = Int(ifd[PHOTOMETRIC].data)::Int
 
     strip_nbytes = ifd[STRIPBYTECOUNTS].data
-    nbytes = Int(sum(strip_nbytes))
-    bitsperpixel = ifd[BITSPERSAMPLE].data
-    rawtypes = Set{DataType}()
-    mappedtypes = Set{DataType}()
+    nbytes = Int(sum(strip_nbytes))::Int
+    bitsperpixel = ifd[BITSPERSAMPLE].data::Union{Int,UInt16,Vector{UInt16}}
+    rawtypes = Base.IdSet{Any}()
+    mappedtypes = Base.IdSet{Any}()
     for i in 1:samplesperpixel
         rawtype = rawtype_mapping[(SampleFormats(sampleformats[i]), bitsperpixel[i])]
         push!(rawtypes, rawtype)
@@ -138,7 +138,7 @@ function output(ifd::IFD)
         end
     end
     (length(rawtypes) > 1) && error("Variable per-pixel storage types are not yet supported")
-    rawtype = first(rawtypes)
+    rawtype = first(rawtypes)::DataType
     readtype = rawtype
 
     compression = COMPRESSION_NONE
@@ -158,7 +158,7 @@ function output(ifd::IFD)
         nbytes,
         readtype,
         rawtype,
-        first(mappedtypes),
+        first(mappedtypes)::DataType,
         compression,
         PhotometricInterpretations(interpretation))
 end
@@ -175,7 +175,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
     if layout.compression != COMPRESSION_NONE
         # strip_nbytes is the number of bytes pre-inflation so we need to
         # calculate the expected size once decompressed and update the values
-        strip_nbytes = fill(rowsperstrip*layout.ncols, length(strip_nbytes))
+        strip_nbytes = fill(rowsperstrip*layout.ncols, length(strip_nbytes)::Int)
         strip_nbytes[end] = (layout.nrows - (rowsperstrip * (nstrips-1))) * layout.ncols
     end
 
@@ -189,13 +189,13 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
     if nstrips > 1
         startbyte = 1
         for i in 1:nstrips
-            seek(tf, strip_offsets[i])
-            nbytes = Int(strip_nbytes[i] / sizeof(T))
+            seek(tf, strip_offsets[i]::Core.BuiltinInts)
+            nbytes = Int(strip_nbytes[i]::Core.BuiltinInts / sizeof(T))
             read!(tf, view(target, startbyte:(startbyte+nbytes-1)), layout.compression)
             startbyte += nbytes
         end
     else
-        seek(tf, strip_offsets[1])
+        seek(tf, strip_offsets[1]::Core.BuiltinInts)
         read!(tf, target, layout.compression)
     end
 end
@@ -222,14 +222,24 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     write(tf, O(0))
 
     for (tag, poses) in remotedata
+        tag = tag::Tag
         data_pos = position(tf.io)
+        data = tag.data
         # add NUL terminator to the end of Strings that don't have it already
-        data = (eltype(tag) == String && !endswith(tag.data, '\0')) ? tag.data * "\0" : tag.data
-        write(tf, data)
+        if eltype(tag) === String
+            data = data::SubString{String}
+            if !endswith(data, '\0')
+                data *= "\0"
+            end
+            write(tf, data)  # compile-time dispatch
+        else
+            write(tf, data)  # run-time dispatch
+        end
         push!(poses, data_pos)
     end
 
     for (tag, poses) in remotedata
+        tag = tag::Tag
         orig_pos, data_pos = poses
         seek(tf, orig_pos)
         write(tf, tag, data_pos)
