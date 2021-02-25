@@ -167,7 +167,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
     layout = output(ifd)
 
     rowsperstrip = layout.nrows
-    (ROWSPERSTRIP in keys(ifd)) && (rowsperstrip = ifd[ROWSPERSTRIP].data)
+    (ROWSPERSTRIP in ifd) && (rowsperstrip = ifd[ROWSPERSTRIP].data)
     nstrips = ceil(Int, layout.nrows / rowsperstrip)
 
     strip_nbytes = ifd[STRIPBYTECOUNTS].data

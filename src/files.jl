@@ -86,7 +86,7 @@ function Base.read!(file::TiffFile, arr::AbstractArray)
     end
 end
 
-function Base.read!(io::IOStream, arr::SubArray{T,N,P,I,L}) where {T, N, P <: BitArray, I <: Tuple{UnitRange, Int64}, L}
+function Base.read!(file::TiffFile, arr::SubArray{T,N,P,I,L}) where {T, N, P <: BitArray, I , L}
     error("Strided bilevel TIFFs are not yet supported. Please open an issue against TiffImages.jl.")
 end
 
@@ -111,3 +111,4 @@ Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
 Base.bswap(x::Rational{T}) where {T} = Rational(bswap(x.num), bswap(x.den))
 
 Base.IteratorSize(::TiffFile) = Base.SizeUnknown()
+Base.eltype(::TiffFile{O}) where {O} = IFD{O}

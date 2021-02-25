@@ -65,6 +65,11 @@ end
     @test eltype(img) == Gray{Bool}
 end
 
+@testset "Striped bilevel image" begin
+    filepath = get_example("capitol2.tif")
+    @test_throws ErrorException("Strided bilevel TIFFs are not yet supported. Please open an issue against TiffImages.jl.") TiffImages.load(filepath)
+end
+
 @testset "Signed integer type" begin
     filepath = get_example("4D-series.ome.tif")
     img = TiffImages.load(filepath)
