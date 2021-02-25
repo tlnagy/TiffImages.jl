@@ -65,14 +65,17 @@ end
 function load(tf::TiffFile, ifds, ::Val{N}; verbose = true) where {N}
     ifd = ifds[1]
 
-    cache = getcache(ifd)
+    caches = [getcache(ifd) for _ in 1:Threads.nthreads()]
 
-    data = similar(cache, nrows(ifd), ncols(ifd), N)
+    data = similar(caches[1], nrows(ifd), ncols(ifd), N)
 
     freq = verbose ? 1 : Inf
-    @showprogress freq for (idx, ifd) in enumerate(ifds)
-        read!(cache, tf, ifd)
-        data[:, :, idx] .= cache'
+    p = Progress(length(ifds); dt=freq)
+    Threads.@threads for idx in 1:length(ifds)
+        tid = Threads.threadid()
+        read!(caches[tid], tf, ifds[idx])
+        data[:, :, idx] .= caches[tid]'
+        next!(p)
     end
 
     return data
