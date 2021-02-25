@@ -91,19 +91,19 @@ function Base.read(tf::TiffFile{O}, ::Type{Tag}) where O <: Unsigned
         T = tiff_to_julian[datatype]
     end
 
-    nbytes = bytes(T) * count
+    nbytes = bytes(T)::Int * count
     if nbytes <= sizeof(O)
         if tf.need_bswap
             reverse!(view(data, 1:nbytes))
         end
-        if T == String
+        if T === String
             return Tag(tag, String(data))
-        elseif T == Any
+        elseif T === Any
             return Tag(tag, Array{Any}(data))
         elseif count == 1
             return Tag(tag, first(reinterpret(T, data)))
         else
-            return Tag(tag, Array(reinterpret(T, data)[1:Int(count)]))
+            return Tag(tag, reinterpret(T, data)[1:Int(count)])
         end
     else
         (tf.need_bswap) && reverse!(data)
