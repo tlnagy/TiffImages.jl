@@ -25,7 +25,7 @@ end
 
 function Base.read(io::Stream, ::Type{TiffFile})
     seekstart(io)
-    filepath = extract_filename(io)
+    filepath = String(extract_filename(io))::String
     bs = need_bswap(io)
     offset_size = offsetsize(io)
     first_offset_raw = read(io, offset_size)

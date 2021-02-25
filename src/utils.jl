@@ -29,10 +29,11 @@ const fdpattern = r"<fd (.*)>"
 Extract the name of the file backing a stream
 """
 function extract_filename(io::IOStream)
-    filename = match(filepattern, io.name)
+    name = String(io.name)
+    filename = match(filepattern, name)
     if filename !== nothing
-        return filename[1]
-    elseif match(fdpattern, io.name) !== nothing
+        return String(filename[1])
+    elseif match(fdpattern, name) !== nothing
         return ""
     else
         error("Can't extract filename from the given stream")

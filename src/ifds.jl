@@ -224,9 +224,17 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     for (tag, poses) in remotedata
         tag = tag::Tag
         data_pos = position(tf.io)
+        data = tag.data
         # add NUL terminator to the end of Strings that don't have it already
-        data = (eltype(tag) == String && !endswith(tag.data, '\0')) ? tag.data * "\0" : tag.data
-        write(tf, data)
+        if eltype(tag) === String
+            data = data::SubString{String}
+            if !endswith(data, '\0')
+                data *= "\0"
+            end
+            write(tf, data)  # compile-time dispatch
+        else
+            write(tf, data)  # run-time dispatch
+        end
         push!(poses, data_pos)
     end
 

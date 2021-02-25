@@ -145,8 +145,14 @@ function Base.write(tf::TiffFile{O}, t::Tag{T}) where {O <: Unsigned, T}
         return false
     end
 
+    data = t.data
     # add NUL terminator to the end of Strings that don't have it already
-    data = (T == String && !endswith(t.data, '\0')) ? t.data * "\0" : t.data
+    if T === String
+        data = data::SubString{String}
+        if !endswith(data, '\0')
+            data *= "\0"
+        end
+    end
 
     write(tf, t.tag)
     write(tf, julian_to_tiff[eltype(t)])
