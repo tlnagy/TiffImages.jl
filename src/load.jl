@@ -33,7 +33,11 @@ function load(io::IOStream; verbose=true, mmap = false)
     if mmap
         loaded = DiskTaggedImage(tf, ifds)
     else
-        loaded = load(tf, ifds, Val(nplanes); verbose=verbose)
+        if nplanes == 1
+            loaded = load(tf, ifds, nothing; verbose=verbose)
+        else
+            loaded = load(tf, ifds, nplanes; verbose=verbose)
+        end
     end
 
     if eltype(loaded) <: Palette
@@ -54,7 +58,7 @@ function load(io::IOStream; verbose=true, mmap = false)
     return DenseTaggedImage(data, ifds)
 end
 
-function load(tf::TiffFile, ifds, ::Val{1}; verbose = true)
+function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, ::Nothing; verbose = true)
     ifd = ifds[1]
     cache = getcache(ifd)
     read!(cache, tf, ifd)
@@ -62,7 +66,7 @@ function load(tf::TiffFile, ifds, ::Val{1}; verbose = true)
     return Array(cache')
 end
 
-function load(tf::TiffFile, ifds, ::Val{N}; verbose = true) where {N}
+function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N; verbose = true)
     ifd = ifds[1]
 
     cache = getcache(ifd)

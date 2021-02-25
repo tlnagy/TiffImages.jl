@@ -52,9 +52,9 @@ _pad(::Type{RGB}) = RGBX
 _pad(::Type{T}) where {T} = T
 
 interpretation(p::PhotometricInterpretations, extrasamples::ExtraSamples, nsamples::Val) = interpretation(p, Val(extrasamples), nsamples)
-interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNSPECIFIED}, ::Val) = interpretation(p), true
+interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNSPECIFIED}, @nospecialize(::Val)) = interpretation(p), true
 interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNSPECIFIED}, ::Val{4}) = _pad(interpretation(p)), false
-interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_ASSOCALPHA}, ::Val) = coloralpha(interpretation(p)), false
+interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_ASSOCALPHA}, @nospecialize(::Val)) = coloralpha(interpretation(p)), false
 interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNASSALPHA}, nsamples::Val) = interpretation(p, Val(EXTRASAMPLE_ASSOCALPHA), nsamples)
 
 _mappedtype(::Type{T}) where {T} = T
@@ -76,10 +76,11 @@ end
 
 Allocate a cache for this IFD with correct type and size.
 """
-getcache(ifd::IFD) = getcache(ifd, Val(rawtype(ifd)))
-getcache(ifd::IFD, ::Val{Bool}) = BitArray(undef, ncols(ifd), nrows(ifd))
-function getcache(ifd::IFD, ::Val{T}) where {T}
+function getcache(ifd::IFD)
+    T = rawtype(ifd)
+    if T === Bool
+        return BitArray(undef, ncols(ifd), nrows(ifd))
+    end
     colortype, extras = interpretation(ifd)
-
-    Array{colortype{_mappedtype(T)}}(undef, ncols(ifd), nrows(ifd))
+    return Array{colortype{_mappedtype(T)}}(undef, ncols(ifd), nrows(ifd))
 end
