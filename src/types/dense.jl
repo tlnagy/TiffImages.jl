@@ -104,7 +104,7 @@ function Base.write(io::Stream, img::DenseTaggedImage)
         ifd[COMPRESSION] = COMPRESSION_NONE
         ifd[STRIPOFFSETS] = O(data_pos)
         ifd[STRIPBYTECOUNTS] = O(ifd_pos-data_pos)
-        ifd[SOFTWARE] = "$(parentmodule(IFD)).jl v$PKGVERSION"
+        ifd[SOFTWARE] = "$(parentmodule(IFD)::Module).jl v$PKGVERSION"
         sort!(ifd.tags)
 
         seek(tf.io, ifd_pos)

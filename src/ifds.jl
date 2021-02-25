@@ -175,7 +175,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
     if layout.compression != COMPRESSION_NONE
         # strip_nbytes is the number of bytes pre-inflation so we need to
         # calculate the expected size once decompressed and update the values
-        strip_nbytes = fill(rowsperstrip*layout.ncols, length(strip_nbytes))
+        strip_nbytes = fill(rowsperstrip*layout.ncols, length(strip_nbytes)::Int)
         strip_nbytes[end] = (layout.nrows - (rowsperstrip * (nstrips-1))) * layout.ncols
     end
 
@@ -189,13 +189,13 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
     if nstrips > 1
         startbyte = 1
         for i in 1:nstrips
-            seek(tf, strip_offsets[i])
-            nbytes = Int(strip_nbytes[i] / sizeof(T))
+            seek(tf, strip_offsets[i]::Core.BuiltinInts)
+            nbytes = Int(strip_nbytes[i]::Core.BuiltinInts / sizeof(T))
             read!(tf, view(target, startbyte:(startbyte+nbytes-1)), layout.compression)
             startbyte += nbytes
         end
     else
-        seek(tf, strip_offsets[1])
+        seek(tf, strip_offsets[1]::Core.BuiltinInts)
         read!(tf, target, layout.compression)
     end
 end

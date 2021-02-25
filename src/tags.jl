@@ -45,7 +45,8 @@ load(tf::TiffFile, t::Tag) = t
 function load(tf::TiffFile{O}, t::Tag{RemoteData{O}}) where {O <: Unsigned}
     T = t.data.datatype
     N = t.data.count
-    rawdata = Vector{UInt8}(undef, bytes(T)*N)
+    nb = bytes(T)::Int
+    rawdata = Vector{UInt8}(undef, nb*N)
 
     pos = position(tf.io)
     seek(tf, t.data.position)
@@ -54,7 +55,7 @@ function load(tf::TiffFile{O}, t::Tag{RemoteData{O}}) where {O <: Unsigned}
     # if this datatype is comprised of multiple bytes and this file needs to be
     # bitswapped then we'll need to reverse the byte order inside each datatype
     # unit
-    if tf.need_bswap && bytes(T) >= 2
+    if tf.need_bswap && nb >= 2
         reverse!(rawdata)
         data = Array{T}(reverse(reinterpret(T, rawdata)))
     elseif T == String
@@ -70,7 +71,7 @@ function load(tf::TiffFile{O}, t::Tag{RemoteData{O}}) where {O <: Unsigned}
     end
     seek(tf, pos)
 
-    Tag(t.tag, data)
+    Tag(t.tag, data)::Tag
 end
 
 bytes(x::Type) = sizeof(x)
@@ -99,9 +100,9 @@ function Base.read(tf::TiffFile{O}, ::Type{Tag}) where O <: Unsigned
         if T === String
             return Tag(tag, String(data))
         elseif T === Any
-            return Tag(tag, Array{Any}(data))
+            return Tag(tag, Vector{Any}(data))
         elseif count == 1
-            return Tag(tag, first(reinterpret(T, data)))
+            return Tag(tag, first(reinterpret(T, data)))::Tag
         else
             return Tag(tag, reinterpret(T, data)[1:Int(count)])
         end
@@ -157,7 +158,7 @@ function Base.write(tf::TiffFile{O}, t::Tag{T}) where {O <: Unsigned, T}
     write(tf, t.tag)
     write(tf, julian_to_tiff[eltype(t)])
     write(tf, O(length(t)))
-    nbytes = write(tf.io, data)
+    nbytes = write(tf.io, data)::Int
 
     # write padding
     if nbytes < sizeof(O)

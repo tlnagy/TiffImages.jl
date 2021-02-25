@@ -63,7 +63,7 @@ function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, ::Nothing; verbose = tr
     cache = getcache(ifd)
     read!(cache, tf, ifd)
 
-    return Array(cache')
+    return Matrix(cache')
 end
 
 function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N; verbose = true)

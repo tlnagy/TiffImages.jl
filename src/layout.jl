@@ -1,6 +1,6 @@
-nrows(ifd::IFD) = Int(ifd[IMAGELENGTH].data)
-ncols(ifd::IFD) = Int(ifd[IMAGEWIDTH].data)
-nsamples(ifd::IFD) = Int(ifd[SAMPLESPERPIXEL].data)
+nrows(ifd::IFD) = Int(ifd[IMAGELENGTH].data)::Int
+ncols(ifd::IFD) = Int(ifd[IMAGEWIDTH].data)::Int
+nsamples(ifd::IFD) = Int(ifd[SAMPLESPERPIXEL].data)::Int
 
 """
     interpretation(ifd)
@@ -36,8 +36,8 @@ interpretation(::Val{PHOTOMETRIC_YCBCR}) = YCbCr
 interpretation(::Val{PHOTOMETRIC_CIELAB}) = Lab
 
 function interpretation(p::PhotometricInterpretations, extrasamples::ExtraSamples, samplesperpixel::Int)
-    interp = interpretation(p)
-    len = length(interp)
+    interp = interpretation(p)::Type{<:Colorant}
+    len = length(interp)::Int
     if len + 1 == samplesperpixel
         return interpretation(p, extrasamples, Val(samplesperpixel))
     elseif len == samplesperpixel
@@ -45,7 +45,7 @@ function interpretation(p::PhotometricInterpretations, extrasamples::ExtraSample
     elseif len < samplesperpixel
         return interp, true
     else
-        error("TIFF file says it contains $interp values, but only has $samplesperpixel samples per pixel instead of the minimum required $(length(interp))")
+        error("TIFF file says it contains $interp values, but only has $samplesperpixel samples per pixel instead of the minimum required $len")
     end
 end
 _pad(::Type{RGB}) = RGBX

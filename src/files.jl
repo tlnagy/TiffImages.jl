@@ -103,8 +103,8 @@ function Base.read!(file::TiffFile, arr::BitArray)
     arr
 end
 
-Base.write(file::TiffFile, t) = write(file.io.io, t)
-Base.write(file::TiffFile, arr::AbstractVector{Any}) = write(file.io.io, Array{UInt8}(arr))
+Base.write(file::TiffFile, t) = write(file.io.io, t)::Int
+Base.write(file::TiffFile, arr::AbstractVector{Any}) = write(file.io.io, Array{UInt8}(arr))::Int
 
 Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
 
