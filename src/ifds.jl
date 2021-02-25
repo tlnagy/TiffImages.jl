@@ -24,8 +24,8 @@ IFD(o::Type{O}) where {O <: Unsigned} = IFD{O}(OrderedDict{UInt16, Tag}())
 
 Base.length(ifd::IFD) = length(ifd.tags)
 Base.keys(ifd::IFD) = keys(ifd.tags)
-Base.iterate(ifd::IFD) = iterate(ifd.tags)
-Base.iterate(ifd::IFD, n::Integer) = iterate(ifd.tags, n)
+Base.iterate(ifd::IFD) = iterate(ifd.tags)::Union{Nothing,Tuple{Pair{UInt16,<:Tag},Int}}
+Base.iterate(ifd::IFD, n::Int) = iterate(ifd.tags, n)::Union{Nothing,Tuple{Pair{UInt16,<:Tag},Int}}
 Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
 Base.getindex(ifd::IFD{O}, key::UInt16) where {O} = getindex(ifd.tags, key)
 Base.in(key::TiffTag, v::IFD) = in(UInt16(key), v)
@@ -222,6 +222,7 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     write(tf, O(0))
 
     for (tag, poses) in remotedata
+        tag = tag::Tag
         data_pos = position(tf.io)
         # add NUL terminator to the end of Strings that don't have it already
         data = (eltype(tag) == String && !endswith(tag.data, '\0')) ? tag.data * "\0" : tag.data
@@ -230,6 +231,7 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     end
 
     for (tag, poses) in remotedata
+        tag = tag::Tag
         orig_pos, data_pos = poses
         seek(tf, orig_pos)
         write(tf, tag, data_pos)
