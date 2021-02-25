@@ -86,7 +86,7 @@ function Base.read!(file::TiffFile, arr::AbstractArray)
     end
 end
 
-function Base.read!(file::TiffFile, arr::SubArray{T,N,P,I,L}) where {T, N, P <: BitArray, I , L}
+function Base.read!(file::TiffFile, arr::SubArray{T,N,<:BitArray}) where {T, N}
     error("Strided bilevel TIFFs are not yet supported. Please open an issue against TiffImages.jl.")
 end
 
