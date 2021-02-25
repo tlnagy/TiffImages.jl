@@ -110,22 +110,22 @@ struct IFDLayout
 end
 
 function output(ifd::IFD)
-    nrows = Int(ifd[IMAGELENGTH].data)
-    ncols = Int(ifd[IMAGEWIDTH].data)
+    nrows = Int(ifd[IMAGELENGTH].data)::Int
+    ncols = Int(ifd[IMAGEWIDTH].data)::Int
 
-    samplesperpixel = Int(ifd[SAMPLESPERPIXEL].data)
+    samplesperpixel = Int(ifd[SAMPLESPERPIXEL].data)::Int
     sampleformats = fill(UInt16(0x01), samplesperpixel)
     if SAMPLEFORMAT in ifd
-        sampleformats = ifd[SAMPLEFORMAT].data
+        sampleformats = ifd[SAMPLEFORMAT].data  # can a type be specified for this?
     end
 
-    interpretation = Int(ifd[PHOTOMETRIC].data)
+    interpretation = Int(ifd[PHOTOMETRIC].data)::Int
 
     strip_nbytes = ifd[STRIPBYTECOUNTS].data
-    nbytes = Int(sum(strip_nbytes))
-    bitsperpixel = ifd[BITSPERSAMPLE].data
-    rawtypes = Set{DataType}()
-    mappedtypes = Set{DataType}()
+    nbytes = Int(sum(strip_nbytes))::Int
+    bitsperpixel = ifd[BITSPERSAMPLE].data::Union{Int,UInt16,Vector{UInt16}}
+    rawtypes = Base.IdSet{Any}()
+    mappedtypes = Base.IdSet{Any}()
     for i in 1:samplesperpixel
         rawtype = rawtype_mapping[(SampleFormats(sampleformats[i]), bitsperpixel[i])]
         push!(rawtypes, rawtype)
@@ -138,7 +138,7 @@ function output(ifd::IFD)
         end
     end
     (length(rawtypes) > 1) && error("Variable per-pixel storage types are not yet supported")
-    rawtype = first(rawtypes)
+    rawtype = first(rawtypes)::DataType
     readtype = rawtype
 
     compression = COMPRESSION_NONE
@@ -158,7 +158,7 @@ function output(ifd::IFD)
         nbytes,
         readtype,
         rawtype,
-        first(mappedtypes),
+        first(mappedtypes)::DataType,
         compression,
         PhotometricInterpretations(interpretation))
 end

@@ -157,7 +157,7 @@ const julian_to_tiff = Dict(
 )
 
 # sampleformat, bitspersample => Julian type
-const rawtype_mapping = Dict(
+const rawtype_mapping = Dict{Tuple{TiffImages.SampleFormats, UInt16}, DataType}(
     (SAMPLEFORMAT_UINT, 1) => Bool,
     (SAMPLEFORMAT_UINT, 8) => UInt8,
     (SAMPLEFORMAT_UINT, 16) => UInt16,
