@@ -1,7 +1,7 @@
 module TiffImages
 
 if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@compiler_options"))
-    Base.Experimental.@compiler_options optimize=1
+    @eval Base.Experimental.@compiler_options optimize=1
 end
 
 using ColorTypes
