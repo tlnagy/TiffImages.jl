@@ -41,6 +41,19 @@ function Base.setindex!(ifd::IFD{O}, value, key::UInt16) where {O <: Unsigned}
     setindex!(ifd, Tag(key, value), UInt16(key))
 end
 
+"""
+    $SIGNATURES
+
+Checks if the data in this IFD is contiguous on disk. Striped data can be read
+faster as one contiguous chunk if possible.
+"""
+function iscontiguous(ifd::IFD)
+    if !(ROWSPERSTRIP in ifd) || nrows(ifd) == ifd[ROWSPERSTRIP].data
+        return true
+    else
+        return all(diff(ifd[STRIPOFFSETS].data) .== ifd[STRIPBYTECOUNTS].data[1:end-1])
+    end
+end
 
 function load!(tf::TiffFile, ifd::IFD)
     for idx in keys(ifd)
@@ -166,19 +179,6 @@ end
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {T, N}
     layout = output(ifd)
 
-    rowsperstrip = layout.nrows
-    (ROWSPERSTRIP in keys(ifd)) && (rowsperstrip = ifd[ROWSPERSTRIP].data)
-    nstrips = ceil(Int, layout.nrows / rowsperstrip)
-
-    strip_nbytes = ifd[STRIPBYTECOUNTS].data
-
-    if layout.compression != COMPRESSION_NONE
-        # strip_nbytes is the number of bytes pre-inflation so we need to
-        # calculate the expected size once decompressed and update the values
-        strip_nbytes = fill(rowsperstrip*layout.ncols, length(strip_nbytes)::Int)
-        strip_nbytes[end] = (layout.nrows - (rowsperstrip * (nstrips-1))) * layout.ncols
-    end
-
     strip_offsets = ifd[STRIPOFFSETS].data
 
     if PLANARCONFIG in ifd
@@ -186,7 +186,20 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
         (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
     end
 
-    if nstrips > 1
+    if !iscontiguous(ifd)
+        rowsperstrip = layout.nrows
+        (ROWSPERSTRIP in ifd) && (rowsperstrip = ifd[ROWSPERSTRIP].data)
+        nstrips = ceil(Int, layout.nrows / rowsperstrip)
+
+        strip_nbytes = ifd[STRIPBYTECOUNTS].data
+
+        if layout.compression != COMPRESSION_NONE
+            # strip_nbytes is the number of bytes pre-inflation so we need to
+            # calculate the expected size once decompressed and update the values
+            strip_nbytes = fill(rowsperstrip*layout.ncols, length(strip_nbytes)::Int)
+            strip_nbytes[end] = (layout.nrows - (rowsperstrip * (nstrips-1))) * layout.ncols
+        end
+
         startbyte = 1
         for i in 1:nstrips
             seek(tf, strip_offsets[i]::Core.BuiltinInts)

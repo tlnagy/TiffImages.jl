@@ -65,6 +65,13 @@ end
     @test eltype(img) == Gray{Bool}
 end
 
+@testset "Striped bilevel image" begin
+    filepath = get_example("capitol2.tif")
+    img = TiffImages.load(filepath)
+    @test size(img) == (378, 504)
+    @test eltype(img) == Gray{Bool}
+end
+
 @testset "Signed integer type" begin
     filepath = get_example("4D-series.ome.tif")
     img = TiffImages.load(filepath)
@@ -72,6 +79,16 @@ end
     @test size(img) == (167, 439, 35)
     expected_rng = reinterpret.(Q0f7, Int8.((-1, 96)))
     @test extrema(img[:, :, 1]) == expected_rng
+end
+
+@testset "Discontiguous striped image, Issue #38" begin
+    filepath = get_example("julia.tif")
+    img = TiffImages.load(filepath)
+
+    @test size(img) == (300, 500)
+    # if discontiguous striping is broken then the garbage padding data will
+    # leak into the actual image
+    @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
 end
 
 @testset "Issue #12" begin
