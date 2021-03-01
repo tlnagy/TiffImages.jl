@@ -1,5 +1,9 @@
 module TiffImages
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@compiler_options"))
+    @eval Base.Experimental.@compiler_options optimize=1
+end
+
 using ColorTypes
 using DocStringExtensions
 using FileIO
