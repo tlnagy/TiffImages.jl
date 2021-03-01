@@ -81,6 +81,16 @@ end
     @test extrema(img[:, :, 1]) == expected_rng
 end
 
+@testset "Discontiguous striped image, Issue #38" begin
+    filepath = get_example("julia.tif")
+    img = TiffImages.load(filepath)
+
+    @test size(img) == (300, 500)
+    # if discontiguous striping is broken then the garbage padding data will
+    # leak into the actual image
+    @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
+end
+
 @testset "Issue #12" begin
     @testset "Big endian striped file" begin
         filepath = get_example("flagler.tif")
