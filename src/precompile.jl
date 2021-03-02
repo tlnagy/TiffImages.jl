@@ -58,7 +58,6 @@ function _precompile_()
     @assert Base.precompile(Tuple{typeof(write),TiffFile{UInt64, Stream{DataFormat{:TIFF}, IOStream}},Tag{UInt64}})   # time: 0.006161459
     @assert Base.precompile(Tuple{typeof(write),TiffFile{UInt32, Stream{DataFormat{:TIFF}, IOStream}},Tag{UInt16}})   # time: 0.005960559
     @assert Base.precompile(Tuple{typeof(write),TiffFile{UInt32, Stream{DataFormat{:TIFF}, IOStream}},Tag{UInt32}})   # time: 0.005946236
-    @assert Base.precompile(Tuple{typeof(==),Tag{Vector{Any}},Tag})   # time: 0.005465424
     @assert Base.precompile(Tuple{Type{SampleFormats},UInt16})   # time: 0.004940535
     @assert Base.precompile(Tuple{typeof(write),TiffFile{UInt32, Stream{DataFormat{:TIFF}, IOBuffer}},Tag{Vector{Any}}})   # time: 0.004425628
     @assert Base.precompile(Tuple{typeof(read!),TiffFile{UInt32, Stream{DataFormat{:TIFF}, IOStream}},BitMatrix,Val{COMPRESSION_NONE}})   # time: 0.004010168
@@ -88,12 +87,8 @@ function _precompile_()
     @assert Base.precompile(Tuple{typeof(write),TiffFile{UInt32, Stream{DataFormat{:TIFF}, IOBuffer}},Tag{Rational{UInt32}},Int64})   # time: 0.001842795
     @assert Base.precompile(Tuple{typeof(write),TiffFile{UInt32, Stream{DataFormat{:TIFF}, IOBuffer}},Tag{Vector{UInt32}},Int64})   # time: 0.001810207
     @assert Base.precompile(Tuple{typeof(write),TiffFile{UInt64, Stream{DataFormat{:TIFF}, IOStream}},Tag{Vector{UInt16}}})   # time: 0.001809206
-    @assert Base.precompile(Tuple{typeof(==),Tag{Vector{UInt16}},Tag})   # time: 0.001804639
-    @assert Base.precompile(Tuple{typeof(==),Tag{Rational{UInt32}},Tag})   # time: 0.001744052
     @assert Base.precompile(Tuple{typeof(write),TiffFile{UInt32, Stream{DataFormat{:TIFF}, IOBuffer}},Tag{Int64},Int64})   # time: 0.001742653
     @assert Base.precompile(Tuple{Type{ExtraSamples},Int64})   # time: 0.001733948
-    @assert Base.precompile(Tuple{typeof(==),Tag{String},Tag})   # time: 0.001720252
-    @assert Base.precompile(Tuple{typeof(==),Tag{Int64},Tag})   # time: 0.001519996
     @assert Base.precompile(Tuple{typeof(write),TiffFile{UInt64, Stream{DataFormat{:TIFF}, IOStream}},Tag{String},Int64})   # time: 0.001491975
     @assert Base.precompile(Tuple{Type{DenseTaggedImage},Matrix{RGB{N0f16}},IFD{UInt32}})   # time: 0.0014855
     @assert Base.precompile(Tuple{typeof(interpretation),PhotometricInterpretations,ExtraSamples,Val{4}})   # time: 0.001481642
