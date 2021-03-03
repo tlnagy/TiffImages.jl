@@ -1,5 +1,5 @@
 .DS_Store
 Manifest.toml
-/dev/precomp_files/
+/dev/
 docs/build/
 docs/src/examples/

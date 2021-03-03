@@ -31,9 +31,14 @@ include("load.jl")
 
 @deprecate TiffFile(::Type{O}) where O<:Unsigned TiffFile{O}()
 
-if Base.VERSION >= v"1.5.3"
-    include("precompile.jl")
-    _precompile_()
+## Precompilation helper
+mktemp() do fpath, _
+    for t in [N0f8, N0f16, Float32, Float64]
+        for c in [Gray, GrayA, RGB, RGBA]
+            TiffImages.save(fpath, rand(c{t}, 2, 2))
+            TiffImages.load(fpath)
+        end
+    end
 end
 
 end # module
