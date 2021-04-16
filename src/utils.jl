@@ -173,3 +173,19 @@ const rawtype_mapping = Dict{Tuple{TiffImages.SampleFormats, UInt16}, DataType}(
 )
 
 Base.bswap(c::Colorant{T, N}) where {T, N} = mapc(bswap, c)
+
+function getstream(fmt, io, name)
+    # adapted from https://github.com/JuliaStats/RDatasets.jl/pull/119/
+    if isdefined(FileIO, :action)
+        # FileIO >= 1.6
+        return Stream{fmt}(io, name)
+    else
+        # FileIO < 1.6
+        return Stream(fmt, io, name)
+    end
+end
+
+getstream(fmt, io::IOBuffer) = getstream(fmt, io, "")
+getstream(fmt, io::IOStream) = getstream(fmt, io, extract_filename(io))
+# assume OMETIFF if no format given
+getstream(io) = getstream(format"TIFF", io)

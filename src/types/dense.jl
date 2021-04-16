@@ -79,7 +79,7 @@ function _constructifd(data::AbstractArray{T, 2}, ::Type{O}) where {T <: Coloran
     ifd
 end
 
-Base.write(io::IOStream, img::DenseTaggedImage) = write(Stream(format"TIFF", io, extract_filename(io)), img)
+Base.write(io::IOStream, img::DenseTaggedImage) = write(getstream(format"TIFF", io, extract_filename(io)), img)
 
 function Base.write(io::Stream, img::DenseTaggedImage)
     O = offset(img)
@@ -116,6 +116,6 @@ save(io::IO, data::DenseTaggedImage) where {IO <: Union{IOStream, Stream}} = wri
 save(io::IO, data) where {IO <: Union{IOStream, Stream}} = save(io, DenseTaggedImage(data))
 function save(filepath::String, data)
     open(filepath, "w") do io
-        save(Stream(format"TIFF", io, filepath), data)
+        save(getstream(format"TIFF", io, filepath), data)
     end
 end

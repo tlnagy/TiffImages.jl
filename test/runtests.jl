@@ -9,7 +9,14 @@ using TiffImages
 DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
 doctest(TiffImages)
 
-get_example(name) = download("https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true")
+_wrap(name) = "https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true"
+
+if VERSION >= v"1.6.0"
+    using Downloads
+    get_example(x) = Downloads.download(_wrap(x))
+else
+    get_example(x) = download(_wrap(x))
+end
 
 @testset "Tag loading" begin
     include("tags.jl")
