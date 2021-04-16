@@ -88,16 +88,6 @@ end
     TiffImages.load!(tf, read_ifd)
 
     @test all(ifd .== read_ifd)
-
-    expected = TiffImages.IFDLayout(1, 512, 512, 262144,
-                                    UInt8, UInt8, FixedPointNumbers.Normed{UInt8,8},
-                                    TiffImages.COMPRESSION_NONE,
-                                    TiffImages.PHOTOMETRIC_MINISBLACK)
-    @test TiffImages.output(ifd) == expected
-
-    delete!(ifd, TiffImages.COMPRESSION)
-
-    @test TiffImages.output(ifd) == expected
 end
 
 @testset "Simple 2D image" begin

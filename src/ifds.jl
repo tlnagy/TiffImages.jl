@@ -110,75 +110,7 @@ function Base.iterate(file::TiffFile, state::Tuple{Union{IFD{O}, Nothing}, Int})
     return (curr_ifd, (next_ifd, next_ifd_offset))
 end
 
-struct IFDLayout
-    nsamples::Int
-    nrows::Int
-    ncols::Int
-    nbytes::Int
-    readtype::DataType
-    rawtype::DataType
-    mappedtype::DataType
-    compression::CompressionType
-    interpretation::PhotometricInterpretations
-end
-
-function output(ifd::IFD)
-    nrows = Int(ifd[IMAGELENGTH].data)::Int
-    ncols = Int(ifd[IMAGEWIDTH].data)::Int
-
-    samplesperpixel = Int(ifd[SAMPLESPERPIXEL].data)::Int
-    sampleformats = fill(UInt16(0x01), samplesperpixel)
-    if SAMPLEFORMAT in ifd
-        sampleformats = ifd[SAMPLEFORMAT].data  # can a type be specified for this?
-    end
-
-    interpretation = Int(ifd[PHOTOMETRIC].data)::Int
-
-    strip_nbytes = ifd[STRIPBYTECOUNTS].data
-    nbytes = Int(sum(strip_nbytes))::Int
-    bitsperpixel = ifd[BITSPERSAMPLE].data::Union{Int,UInt16,Vector{UInt16}}
-    rawtypes = Base.IdSet{Any}()
-    mappedtypes = Base.IdSet{Any}()
-    for i in 1:samplesperpixel
-        rawtype = rawtype_mapping[(SampleFormats(sampleformats[i]), bitsperpixel[i])]
-        push!(rawtypes, rawtype)
-        if rawtype <: Unsigned
-            push!(mappedtypes, Normed{rawtype, sizeof(rawtype)*8})
-        elseif rawtype <: Signed
-            push!(mappedtypes, Fixed{rawtype, sizeof(rawtype)*8-1})
-        else
-            push!(mappedtypes, rawtype)
-        end
-    end
-    (length(rawtypes) > 1) && error("Variable per-pixel storage types are not yet supported")
-    rawtype = first(rawtypes)::DataType
-    readtype = rawtype
-
-    compression = COMPRESSION_NONE
-    if COMPRESSION in ifd
-        compression = CompressionType(ifd[COMPRESSION].data)
-    end
-
-    if compression != COMPRESSION_NONE
-        # recalculate nbytes if the data is compressed since the inflated data
-        # is most likely larger than the bytes on disk
-        nbytes = nrows*ncols*samplesperpixel*sizeof(rawtype)
-        readtype = UInt8
-    end
-
-    IFDLayout(
-        samplesperpixel, nrows, ncols,
-        nbytes,
-        readtype,
-        rawtype,
-        first(mappedtypes)::DataType,
-        compression,
-        PhotometricInterpretations(interpretation))
-end
-
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {T, N}
-    layout = output(ifd)
-
     strip_offsets = ifd[STRIPOFFSETS].data
 
     if PLANARCONFIG in ifd
@@ -186,30 +118,38 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
         (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
     end
 
+    rows = nrows(ifd)
+    cols = ncols(ifd)
+    compression = COMPRESSION_NONE
+    try 
+        compression = CompressionType(ifd[COMPRESSION].data)
+    catch
+    end
+
     if !iscontiguous(ifd)
-        rowsperstrip = layout.nrows
+        rowsperstrip = rows
         (ROWSPERSTRIP in ifd) && (rowsperstrip = ifd[ROWSPERSTRIP].data)
-        nstrips = ceil(Int, layout.nrows / rowsperstrip)
+        nstrips = ceil(Int, rows / rowsperstrip)
 
         strip_nbytes = ifd[STRIPBYTECOUNTS].data
 
-        if layout.compression != COMPRESSION_NONE
+        if compression != COMPRESSION_NONE
             # strip_nbytes is the number of bytes pre-inflation so we need to
             # calculate the expected size once decompressed and update the values
-            strip_nbytes = fill(rowsperstrip*layout.ncols, length(strip_nbytes)::Int)
-            strip_nbytes[end] = (layout.nrows - (rowsperstrip * (nstrips-1))) * layout.ncols
+            strip_nbytes = fill(rowsperstrip*cols, length(strip_nbytes)::Int)
+            strip_nbytes[end] = (rows - (rowsperstrip * (nstrips-1))) * cols
         end
 
         startbyte = 1
         for i in 1:nstrips
             seek(tf, strip_offsets[i]::Core.BuiltinInts)
             nbytes = Int(strip_nbytes[i]::Core.BuiltinInts / sizeof(T))
-            read!(tf, view(target, startbyte:(startbyte+nbytes-1)), layout.compression)
+            read!(tf, view(target, startbyte:(startbyte+nbytes-1)), compression)
             startbyte += nbytes
         end
     else
         seek(tf, strip_offsets[1]::Core.BuiltinInts)
-        read!(tf, target, layout.compression)
+        read!(tf, target, compression)
     end
 end
 
