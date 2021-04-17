@@ -118,6 +118,16 @@ end
     end
 end
 
+@testset "Mmap" begin
+    filepath = get_example("julia.tif")
+    img = TiffImages.load(filepath, mmap=true)
+    @test size(img) == (300, 500, 1)
+    @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
+    # force close the stream behind the file to see if it's properly reopened 
+    close(img.data.file.io)
+    @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
+end
+
 @testset "Writing" begin
     include("writer.jl")
 end
