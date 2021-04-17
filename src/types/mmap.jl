@@ -55,7 +55,7 @@ function Base.getindex(A::DiskTaggedImage{T, O, AA}, i1::Int, i2::Int, i::Int) w
     # if the file isn't open, lets open a handle and update it
     if !isopen(A.file.io)
         path = A.file.filepath
-        A.file.io = Stream(format"TIFF", open(path), path)
+        A.file.io = getstream(format"TIFF", open(path), path)
     end
 
     read!(A.cache, A.file, ifd)

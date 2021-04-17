@@ -20,7 +20,7 @@ mutable struct TiffFile{O <: Unsigned, S <: Stream}
 end
 
 TiffFile{O}(s::Stream) where O <: Unsigned = TiffFile{O, typeof(s)}("", s, -1, false)
-TiffFile{O}(io::IO) where O <: Unsigned    = TiffFile{O}(Stream(format"TIFF", io))
+TiffFile{O}(io::IO) where O <: Unsigned    = TiffFile{O}(getstream(format"TIFF", io))
 TiffFile{O}() where O <: Unsigned          = TiffFile{O}(IOBuffer())
 
 function Base.read(io::Stream, ::Type{TiffFile})
@@ -33,7 +33,7 @@ function Base.read(io::Stream, ::Type{TiffFile})
     TiffFile{offset_size, typeof(io)}(filepath, io, first_offset, bs)
 end
 
-Base.read(io::IOStream, t::Type{TiffFile}) = read(Stream(format"TIFF", io, extract_filename(io)), t)
+Base.read(io::IOStream, t::Type{TiffFile}) = read(getstream(format"TIFF", io, extract_filename(io)), t)
 
 function Base.write(file::TiffFile{O}) where O
     seekstart(file.io)

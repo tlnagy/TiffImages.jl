@@ -9,7 +9,14 @@ using TiffImages
 DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
 doctest(TiffImages)
 
-get_example(name) = download("https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true")
+_wrap(name) = "https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true"
+
+if VERSION >= v"1.6.0"
+    using Downloads
+    get_example(x) = Downloads.download(_wrap(x))
+else
+    get_example(x) = download(_wrap(x))
+end
 
 @testset "Tag loading" begin
     include("tags.jl")
@@ -109,6 +116,16 @@ end
         img_stripoffsets = Int.(img.ifds[1][TiffImages.STRIPOFFSETS].data)
         @test issorted(img_stripoffsets)
     end
+end
+
+@testset "Mmap" begin
+    filepath = get_example("julia.tif")
+    img = TiffImages.load(filepath, mmap=true)
+    @test size(img) == (300, 500, 1)
+    @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
+    # force close the stream behind the file to see if it's properly reopened 
+    close(img.data.file.io)
+    @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
 end
 
 @testset "Writing" begin

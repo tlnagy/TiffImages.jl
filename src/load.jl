@@ -6,26 +6,12 @@ end
 
 load(io::IOStream; verbose=true, mmap = false) = load(read(io, TiffFile); verbose=verbose, mmap=mmap)
 function load(tf::TiffFile; verbose=true, mmap = false)
-    isdense = true
     ifds = IFD{offset(tf)}[]
 
-    layout = nothing
     nplanes = 0
-
     for ifd in tf
         load!(tf, ifd)
         push!(ifds, ifd)
-
-        new_layout = output(ifd)
-
-        # if we detect variance in the format of the IFD data then we can't
-        # represent the image as a dense array
-        if layout != nothing && layout != new_layout
-            isdense = false
-            @info "Not dense"
-        end
-        layout = new_layout
-
         nplanes += 1
     end
 
