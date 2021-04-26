@@ -33,6 +33,11 @@ function Base.getindex(img::DenseTaggedImage{T, 3}, i::Colon, j::Colon, k) where
     DenseTaggedImage(getindex(img.data, i, j, k), img.ifds[k])
 end
 
+# Override the fallback convert to get better performance
+# ImageIO requires this to get rid of the convert overhead
+# Ref: https://github.com/JuliaIO/ImageIO.jl/pull/26
+Base.convert(::Type{AA}, img::DenseTaggedImage{T,N,O,AA}) where {T,N,O,AA<:Array} = img.data
+
 """
     offset(img)
 
