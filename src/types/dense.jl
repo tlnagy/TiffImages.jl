@@ -22,6 +22,7 @@ DenseTaggedImage(data::AbstractArray{T, 3}) where {T} = DenseTaggedImage(data, _
 DenseTaggedImage(data::AbstractArray{T, 2}) where {T} = DenseTaggedImage(data, [_constructifd(data, UInt32)])
 
 Base.size(t::DenseTaggedImage) = size(t.data)
+Base.axes(t::DenseTaggedImage) = axes(t.data)
 
 @propagate_inbounds Base.getindex(img::DenseTaggedImage{T, N}, i::Vararg{Int, N}) where {T, N} = img.data[i...]
 @propagate_inbounds Base.getindex(img::DenseTaggedImage, i...) = getindex(img.data, i...)
@@ -60,7 +61,7 @@ function _constructifd(data::AbstractArray{T, 3}) where {T <: Colorant}
 
     ifds = IFD{offset}[]
 
-    for slice in 1:size(data, 3)
+    for slice in axes(data, 3)
         push!(ifds, _constructifd(view(data, :, :, slice), offset))
     end
 
@@ -92,11 +93,13 @@ function Base.write(io::Stream, img::DenseTaggedImage)
 
     prev_ifd_record = write(tf) # record that will have be updated
 
-    pagecache = Matrix{UInt8}(undef, size(img.data, 2) * sizeof(eltype(img.data)), size(img.data, 1))
+    pagecache = Vector{UInt8}(undef, size(img.data, 2) * sizeof(eltype(img.data)) * size(img.data, 1))
 
-    for (idx, ifd) in enumerate(img.ifds)
+    # For offseted arrays, `axes(img, 3) == 1:length(img.ifds)` does not hold in general
+    for (idx, ifd) in zip(axes(img, 3), img.ifds)
         data_pos = position(tf.io) # start of data
-        pagecache .= reinterpret(UInt8, PermutedDimsArray(view(img.data, :, :, idx), (2, 1)))
+        plain_data_view = reshape(PermutedDimsArray(view(img.data, :, :, idx), (2, 1)), :)
+        pagecache .= reinterpret(UInt8, plain_data_view)
         write(tf, pagecache) # write data
         ifd_pos = position(tf.io)
 

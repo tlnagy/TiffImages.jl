@@ -2,6 +2,7 @@ using ColorTypes
 using ColorVectorSpace
 using Documenter
 using FixedPointNumbers
+using OffsetArrays
 using Statistics
 using Test
 using TiffImages
