@@ -32,6 +32,10 @@ end
     @test img[50,50] == GrayA{N0f8}(0.804, 1.0) # value from ImageMagick.jl
     img[50:300, 50:150] .= 0.0
     @test img[50, 50] == GrayA{N0f8}(0.0, 1.0)
+
+    # Efficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt === img.data
 end
 
 @testset "MRI stack" begin
@@ -39,6 +43,11 @@ end
     img = TiffImages.load(filepath)
     @test size(img) == (128, 128, 27)
     @test eltype(img) == RGB{N0f16}
+
+    # TODO: inefficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt == img.data
+    @test img_cvt !== img.data
 
     @testset "Multiple planes" begin
         # test slice based access
@@ -58,6 +67,10 @@ end
     img = TiffImages.load(filepath)
     @test size(img) == (619, 858)
     @test eltype(img) == RGB{Float16}
+    
+    # Efficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt === img.data
 end
 
 @testset "Packbits image" begin
@@ -65,6 +78,10 @@ end
     img = TiffImages.load(filepath)
     @test size(img) == (378, 504)
     @test eltype(img) == Gray{N0f8}
+    
+    # Efficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt === img.data
 end
 
 @testset "Bilevel image" begin
@@ -72,6 +89,10 @@ end
     img = TiffImages.load(filepath)
     @test size(img) == (378, 504)
     @test eltype(img) == Gray{Bool}
+    
+    # Efficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt === img.data
 end
 
 @testset "Striped bilevel image" begin
@@ -79,6 +100,10 @@ end
     img = TiffImages.load(filepath)
     @test size(img) == (378, 504)
     @test eltype(img) == Gray{Bool}
+
+    # Efficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt === img.data
 end
 
 @testset "Signed integer type" begin
@@ -88,6 +113,10 @@ end
     @test size(img) == (167, 439, 35)
     expected_rng = reinterpret.(Q0f7, Int8.((-1, 96)))
     @test extrema(img[:, :, 1]) == expected_rng
+
+    # Efficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt === img.data
 end
 
 @testset "Discontiguous striped image, Issue #38" begin
@@ -98,6 +127,10 @@ end
     # if discontiguous striping is broken then the garbage padding data will
     # leak into the actual image
     @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
+
+    # Efficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt === img.data
 end
 
 @testset "Issue #12" begin
@@ -108,6 +141,10 @@ end
         # verify that strip offsets are correctly bswapped for endianness
         img_stripoffsets = Int.(img.ifds[1][TiffImages.STRIPOFFSETS].data)
         @test img_stripoffsets == [8, 129848, 259688, 389528]
+
+        # Efficient convert method
+        img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+        @test img_cvt === img.data
     end
 
     @testset "Little endian striped file" begin
@@ -117,6 +154,10 @@ end
         # verify that strip offsets are correctly bswapped for endianness
         img_stripoffsets = Int.(img.ifds[1][TiffImages.STRIPOFFSETS].data)
         @test issorted(img_stripoffsets)
+
+        # Efficient convert method
+        img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+        @test img_cvt === img.data
     end
 end
 
@@ -128,6 +169,11 @@ end
     # force close the stream behind the file to see if it's properly reopened 
     close(img.data.file.io)
     @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
+
+    # TODO: inefficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt == img.data
+    @test img_cvt !== img.data
 end
 
 @testset "Writing" begin
