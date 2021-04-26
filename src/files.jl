@@ -80,7 +80,7 @@ function Base.read(file::TiffFile{O}, ::Type{String}) where O
 end
 
 function Base.read!(file::TiffFile, arr::AbstractArray)
-    read!(stream(file.io), arr)
+    _read!(stream(file.io), arr)
     if file.need_bswap
         arr .= bswap.(arr)
     end

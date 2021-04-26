@@ -6,8 +6,10 @@ using Statistics
 using Test
 using TiffImages
 
-DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
-doctest(TiffImages)
+if VERSION >= v"1.4"
+    DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
+    doctest(TiffImages)
+end
 
 _wrap(name) = "https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true"
 
