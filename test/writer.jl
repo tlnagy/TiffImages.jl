@@ -124,7 +124,7 @@ end
     @test eltype(img3) == GrayA{N0f8}
 end
 
-@testset "DenseTaggedImage with offsets (#46)" begin
+@testset "DenseTaggedImage with OffsetArray (#46)" begin
     for T in (Gray, RGB)
         data = OffsetArray(rand(T, 10, 10), -1, -1);
         filepath = tempname()
@@ -133,6 +133,19 @@ end
         data_saveload = TiffImages.load(filepath)
         # the offset is stripped when saving
         @test axes(data_saveload) != axes(data)
+        @test data_saveload == collect(data)
+    end
+end
+
+@testset "DenseTaggedImage with AxisArray" begin
+    for T in (Gray, RGB)
+        data = AxisArray(rand(Gray, 100, 100, 3), :h, :w)
+        filepath = tempname()
+        TiffImages.save(filepath, data)
+
+        # the axis information is stripped when saving
+        data_saveload = TiffImages.load(filepath)
+        @test axes(data_saveload) == axes(data)
         @test data_saveload == collect(data)
     end
 end

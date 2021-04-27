@@ -3,6 +3,7 @@ using ColorVectorSpace
 using Documenter
 using FixedPointNumbers
 using OffsetArrays
+import AxisArrays: AxisArray # No, we don't want to export `AxisArrays.axes`
 using Statistics
 using Test
 using TiffImages
