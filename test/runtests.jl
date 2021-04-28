@@ -2,6 +2,8 @@ using ColorTypes
 using ColorVectorSpace
 using Documenter
 using FixedPointNumbers
+using OffsetArrays
+import AxisArrays: AxisArray # No, we don't want to import `AxisArrays.axes`
 using Statistics
 using Test
 using TiffImages
