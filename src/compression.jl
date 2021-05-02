@@ -28,6 +28,14 @@ function Base.read!(tf::TiffFile, arr::AbstractArray{T, N}, ::Val{COMPRESSION_PA
     end
 end
 
+function Base.read!(tf::TiffFile, arr::AbstractArray, ::Val{COMPRESSION_DEFLATE})
+    readbytes!(InflateZlibStream(tf.io.io), reinterpret(UInt8, vec(arr)))
+end
+
+function Base.read!(tf::TiffFile, arr::AbstractArray, ::Val{COMPRESSION_ADOBE_DEFLATE})
+    readbytes!(InflateZlibStream(tf.io.io), reinterpret(UInt8, vec(arr)))
+end
+
 """
     get_inflator(x)
 
