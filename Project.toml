@@ -15,7 +15,7 @@ PkgVersion = "eebad327-c553-4316-9ea0-9fa01ccd7688"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 
 [compat]
-ColorTypes = "0.10"
+ColorTypes = "0.10, 0.11"
 DocStringExtensions = "0.8.3"
 FileIO = "1"
 FixedPointNumbers = "0.8"
