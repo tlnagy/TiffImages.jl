@@ -14,6 +14,7 @@ using OrderedCollections
 using PkgVersion
 using ProgressMeter
 using Base.Iterators
+using Inflate
 
 const PKGVERSION = @PkgVersion.Version 0
 
