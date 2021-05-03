@@ -86,6 +86,31 @@ end
     @test img_cvt === img.data
 end
 
+@testset "Adobe Deflate image" begin
+    filepath = get_example("underwater_bmx.tif")
+    img = TiffImages.load(filepath)
+    @test size(img) == (773, 1076)
+    @test eltype(img) == RGB{N0f8}
+
+    # Efficient convert method
+    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
+    @test img_cvt === img.data
+
+    # Dirty patch the TIFF_COMPRESSION tag from
+    # COMPRESSION_ADOBE_DEFLATE (8) to COMPRESSION_DEFLATE (32946).
+    # Those are in fact exactly the same so nothing else needs to be
+    # adjusted.
+    data = read(filepath)
+    @assert data[1063947:1063948] == [0x08, 0x00]
+    data[1063947:1063948] .= reinterpret(UInt8, [UInt16(32946)])
+    _, io = mktemp()
+    write(io, data)
+    seekstart(io)
+    img = TiffImages.load(io)
+    @test size(img) == (773, 1076)
+    @test eltype(img) == RGB{N0f8}
+end
+
 @testset "Bilevel image" begin
     filepath = get_example("capitol.tif")
     img = TiffImages.load(filepath)
