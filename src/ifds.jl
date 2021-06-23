@@ -126,7 +126,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
     catch
     end
 
-    if !iscontiguous(ifd)
+    if !iscontiguous(ifd) || compression != COMPRESSION_NONE
         rowsperstrip = rows
         (ROWSPERSTRIP in ifd) && (rowsperstrip = ifd[ROWSPERSTRIP].data)
         nstrips = ceil(Int, rows / rowsperstrip)
@@ -136,8 +136,8 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
         if compression != COMPRESSION_NONE
             # strip_nbytes is the number of bytes pre-inflation so we need to
             # calculate the expected size once decompressed and update the values
-            strip_nbytes = fill(rowsperstrip*cols, length(strip_nbytes)::Int)
-            strip_nbytes[end] = (rows - (rowsperstrip * (nstrips-1))) * cols
+            strip_nbytes = fill(rowsperstrip*cols*sizeof(T), length(strip_nbytes)::Int)
+            strip_nbytes[end] = (rows - (rowsperstrip * (nstrips-1))) * cols * sizeof(T)
         end
 
         startbyte = 1
