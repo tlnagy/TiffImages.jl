@@ -1,6 +1,13 @@
 nrows(ifd::IFD) = Int(ifd[IMAGELENGTH].data)::Int
 ncols(ifd::IFD) = Int(ifd[IMAGEWIDTH].data)::Int
-nsamples(ifd::IFD) = Int(ifd[SAMPLESPERPIXEL].data)::Int
+
+function nsamples(ifd::IFD)
+    if SAMPLESPERPIXEL in ifd
+        Int(ifd[SAMPLESPERPIXEL].data)::Int
+    else
+        1
+    end
+end
 
 """
     interpretation(ifd)

@@ -6,9 +6,13 @@
     @test TiffImages.interpretation(ifd) == (Gray, false)
 
     ifd[TiffImages.SAMPLESPERPIXEL] = 2
-
     @test TiffImages.interpretation(ifd) == (Gray, true)
 
+    # handle case where SamplesPerPixel is missing, issue #56
+    delete!(ifd, TiffImages.SAMPLESPERPIXEL)
+    @test TiffImages.interpretation(ifd) == (Gray, false)
+
+    ifd[TiffImages.SAMPLESPERPIXEL] = 2
     ifd[TiffImages.EXTRASAMPLES] = TiffImages.EXTRASAMPLE_ASSOCALPHA
 
     @test TiffImages.interpretation(ifd) == (GrayA, false)
