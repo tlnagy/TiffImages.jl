@@ -7,10 +7,12 @@ struct DenseTaggedImage{T, N, O <: Unsigned, AA <: AbstractArray} <: AbstractDen
     function DenseTaggedImage(data::AbstractArray{T, N}, ifds::Vector{IFD{O}}) where {T, N, O}
         if N == 3
             @assert size(data, 3) == length(ifds)
+            newifds = _constructifd(data)
         elseif N == 2
             @assert length(ifds) == 1
+            newifds = [_constructifd(data, O)]
         end
-        new{T, N, O, typeof(data)}(data, ifds)
+        new{T, N, O, typeof(data)}(data, map(x->merge(cleanup(x[1]), x[2]), zip(ifds, newifds)))
     end
 end
 
@@ -64,6 +66,26 @@ function _constructifd(data::AbstractArray{T, 3}) where {T <: Colorant}
     ifds
 end
 
+const cleanup_list = [
+    EXTRASAMPLES,
+    ROWSPERSTRIP,
+    PLANARCONFIG,
+    SAMPLEFORMAT
+]
+
+"""
+    Creates a new IFD with a non-exhaustive list of problematic tags removed that 
+will mess up the final tiff if they are included. These aren't merged away with the
+default set created by `_constructifd`
+"""
+function cleanup(ifd::IFD{O}) where {O <: Unsigned}
+    newifd = IFD(O, copy(ifd.tags))
+    for tag in cleanup_list
+        delete!(newifd, tag)
+    end
+    newifd
+end
+
 function _constructifd(data::AbstractArray{T, 2}, ::Type{O}) where {T <: Colorant, O <: Unsigned}
     ifd = IFD(O)
 
@@ -73,7 +95,9 @@ function _constructifd(data::AbstractArray{T, 2}, ::Type{O}) where {T <: Coloran
     ifd[BITSPERSAMPLE] = fill(UInt16(bitspersample(data)), n_samples)
     ifd[PHOTOMETRIC] = interpretation(data)
     ifd[SAMPLESPERPIXEL] = UInt16(n_samples)
-    ifd[SAMPLEFORMAT] = fill(UInt16(sampleformat(data)), n_samples)
+    if !(T <: Gray{Bool}) # bilevel images don't have the sampleformat tag
+        ifd[SAMPLEFORMAT] = fill(UInt16(sampleformat(data)), n_samples)
+    end
     extra = extrasamples(data)
     if extra !== nothing
         ifd[EXTRASAMPLES] = extra
@@ -107,7 +131,13 @@ function Base.write(io::Stream, img::DenseTaggedImage)
         ifd[COMPRESSION] = COMPRESSION_NONE
         ifd[STRIPOFFSETS] = O(data_pos)
         ifd[STRIPBYTECOUNTS] = O(ifd_pos-data_pos)
-        ifd[SOFTWARE] = "$(parentmodule(IFD)::Module).jl v$PKGVERSION"
+
+        version = "$(parentmodule(IFD)::Module).jl v$PKGVERSION"
+        if SOFTWARE in ifd
+            ifd[SOFTWARE] = "$(ifd[SOFTWARE].data);$version"
+        else
+            ifd[SOFTWARE] = version
+        end
         sort!(ifd.tags)
 
         seek(tf.io, ifd_pos)

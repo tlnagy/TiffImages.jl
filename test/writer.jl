@@ -157,3 +157,17 @@ end
     TiffImages.save(filepath, data)
     @test all(data .== TiffImages.load(filepath))
 end
+
+
+@testset "Software tag, issue #60" begin
+    filepath = get_example("house.tif")
+    img = TiffImages.load(filepath)
+    ifd = TiffImages.IFD(UInt32)
+    ifd[TiffImages.SOFTWARE] = "test"
+
+    img2 = TiffImages.DenseTaggedImage(Gray{Float64}.(img.data), ifd);
+    path, io = mktemp()
+    write(io, img2)
+    img3 = TiffImages.load(path)
+    @test occursin("test;", img3.ifds[1][TiffImages.SOFTWARE].data)
+end
