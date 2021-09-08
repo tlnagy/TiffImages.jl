@@ -21,6 +21,7 @@ struct IFD{O <: Unsigned}
 end
 
 IFD(o::Type{O}) where {O <: Unsigned} = IFD{O}(OrderedDict{UInt16, Tag}())
+IFD(o::Type{O}, tags) where {O <: Unsigned} = IFD{O}(tags)
 
 Base.length(ifd::IFD) = length(ifd.tags)
 Base.keys(ifd::IFD) = keys(ifd.tags)
@@ -32,6 +33,9 @@ Base.in(key::TiffTag, v::IFD) = in(UInt16(key), v)
 Base.in(key::UInt16, v::IFD) = in(key, keys(v))
 Base.delete!(ifd::IFD, key::TiffTag) = delete!(ifd, UInt16(key))
 Base.delete!(ifd::IFD, key::UInt16) = delete!(ifd.tags, key)
+
+Base.similar(::IFD{O}) where {O <: Unsigned} = IFD(O)
+Base.merge(ifd::IFD{O}, other::IFD{O}) where {O <: Unsigned} = IFD(O, merge(ifd.tags, other.tags))
 
 Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, value, key)
 Base.setindex!(ifd::IFD, value::Tag, key::TiffTag) = setindex!(ifd.tags, value, UInt16(key))
