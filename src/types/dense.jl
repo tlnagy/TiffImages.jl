@@ -52,7 +52,10 @@ Generate a IFD with the minimal set of tags to describe `data`.
 """
 function _constructifd(data::AbstractArray{T, 3}) where {T <: Colorant}
     offset = UInt32
-    if sizeof(T) * length(data) >= 3.8*10^9
+    # this is only a crude estimate for the amount information that we can store
+    # in regular TIFF. The real value should take into account the size of the
+    # header, the size of a minimal set of tags in each IFDs. 
+    if sizeof(T) * length(data) >= typemax(offset)
         @info "Array too large to fit in standard TIFF container, switching to BigTIFF"
         offset = UInt64
     end
