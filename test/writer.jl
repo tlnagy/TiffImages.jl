@@ -87,7 +87,7 @@ end
     read_ifd, next_ifd = read(tf, TiffImages.IFD)
     TiffImages.load!(tf, read_ifd)
 
-    @test all(ifd .== read_ifd)
+    @test all(sort(collect(ifd), by = x -> x[1]) .== sort(collect(read_ifd), by = x -> x[1]))
 end
 
 @testset "Simple 2D image" begin

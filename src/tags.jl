@@ -40,7 +40,7 @@ Base.eltype(::Tag{T}) where {T} = T
 Base.eltype(::Tag{<: AbstractVector{T}}) where {T} = T
 Base.eltype(t::Tag{RemoteData}) = t.data.datatype
 
-load(tf::TiffFile, t::Tag) = t
+load(::TiffFile, t::Tag) = t
 
 function load(tf::TiffFile{O}, t::Tag{RemoteData{O}}) where {O <: Unsigned}
     T = t.data.datatype

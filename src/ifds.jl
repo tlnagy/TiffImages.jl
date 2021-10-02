@@ -17,33 +17,68 @@ IFD, with tags:
 ```
 """
 struct IFD{O <: Unsigned}
-    tags::OrderedDict{UInt16, Tag}
+    tags::DefaultDict{UInt16, Vector{Tag}, DataType}
 end
 
-IFD(o::Type{O}) where {O <: Unsigned} = IFD{O}(OrderedDict{UInt16, Tag}())
-IFD(o::Type{O}, tags) where {O <: Unsigned} = IFD{O}(tags)
+IFD(::Type{O}) where {O <: Unsigned} = IFD{O}(DefaultDict{UInt16, Vector{Tag}}(Vector{Tag}))
+IFD(::Type{O}, tags) where {O <: Unsigned} = IFD{O}(tags)
 
-Base.length(ifd::IFD) = length(ifd.tags)
+"""
+A wrapper to force getindex to return the underlying array instead of only the
+first element. Usually the first element is sufficient, but sometimes access to
+the array is needed (to add duplicate entries or access them).
+
+```jldoctest; setup = :(ifd = TiffImages.IFD(UInt32))
+julia> using TiffImages: Iterable
+
+julia> ifd[TiffImages.IMAGEDESCRIPTION] = "test"
+"test"
+
+julia> ifd[Iterable(TiffImages.IMAGEDESCRIPTION)] # since wrapped with Iterable, returns array
+1-element Vector{TiffImages.Tag}:
+ Tag(IMAGEDESCRIPTION, "test")
+
+julia> ifd[Iterable(TiffImages.IMAGEDESCRIPTION)] = "test2" # since wrapped with Iterable, it appends
+"test2"
+
+julia> ifd
+IFD, with tags: 
+	Tag(IMAGEDESCRIPTION, "test")
+	Tag(IMAGEDESCRIPTION, "test2")
+
+```
+"""
+struct Iterable{T}
+    key::T
+end
+
+Base.length(ifd::IFD) = sum(map(length, values(ifd.tags)))
 Base.keys(ifd::IFD) = keys(ifd.tags)
-Base.iterate(ifd::IFD) = iterate(ifd.tags)::Union{Nothing,Tuple{Pair{UInt16,<:Tag},Int}}
-Base.iterate(ifd::IFD, n::Int) = iterate(ifd.tags, n)::Union{Nothing,Tuple{Pair{UInt16,<:Tag},Int}}
+Base.iterate(ifd::IFD) = iterate(ifd.tags)
+Base.iterate(ifd::IFD, n::Int) = iterate(ifd.tags, n)
+
+Base.getindex(ifd::IFD, key::Iterable{TiffTag}) = getindex(ifd, Iterable(UInt16(key.key)))
+Base.getindex(ifd::IFD, key::Iterable{UInt16}) = getindex(ifd.tags, key.key)
 Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
-Base.getindex(ifd::IFD{O}, key::UInt16) where {O} = getindex(ifd.tags, key)
+Base.getindex(ifd::IFD, key::UInt16) = first(getindex(ifd.tags, key))
+
 Base.in(key::TiffTag, v::IFD) = in(UInt16(key), v)
 Base.in(key::UInt16, v::IFD) = in(key, keys(v))
 Base.delete!(ifd::IFD, key::TiffTag) = delete!(ifd, UInt16(key))
 Base.delete!(ifd::IFD, key::UInt16) = delete!(ifd.tags, key)
 
 Base.similar(::IFD{O}) where {O <: Unsigned} = IFD(O)
-Base.merge(ifd::IFD{O}, other::IFD{O}) where {O <: Unsigned} = IFD(O, merge(ifd.tags, other.tags))
+Base.merge(ifd::IFD{O}, other::IFD{O}) where {O <: Unsigned} = IFD(O, DefaultDict(Vector{Int}, merge(ifd.tags, other.tags)))
 
-Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, value, key)
-Base.setindex!(ifd::IFD, value::Tag, key::TiffTag) = setindex!(ifd.tags, value, UInt16(key))
+Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, [value], key)
+Base.setindex!(ifd::IFD, value::Tag, key::TiffTag) = setindex!(ifd, value, UInt16(key))
 
 Base.setindex!(ifd::IFD, value, key::TiffTag) = setindex!(ifd, value, UInt16(key))
-function Base.setindex!(ifd::IFD{O}, value, key::UInt16) where {O <: Unsigned}
-    setindex!(ifd, Tag(key, value), UInt16(key))
-end
+Base.setindex!(ifd::IFD, value, key::UInt16) = setindex!(ifd, Tag(key, value), key)
+
+Base.setindex!(ifd::IFD, value, key::Iterable{TiffTag}) = setindex!(ifd, value, Iterable(UInt16(key.key)))
+Base.setindex!(ifd::IFD, value, key::Iterable{UInt16}) = setindex!(ifd, Tag(key.key, value), key)
+Base.setindex!(ifd::IFD, value::Tag, key::Iterable{UInt16}) = push!(ifd.tags[key.key], value)
 
 """
     $SIGNATURES
@@ -60,15 +95,21 @@ function iscontiguous(ifd::IFD)
 end
 
 function load!(tf::TiffFile, ifd::IFD)
-    for idx in keys(ifd)
-        ifd[idx] = load(tf, ifd[idx])
+    for key in sort(collect(keys(ifd)))
+        tags = ifd[Iterable(key)]
+        for (idx, tag) in enumerate(tags)
+            tags[idx] = load(tf, tag)
+        end
     end
 end
 
 function Base.show(io::IO, ifd::IFD)
     print(io, "IFD, with tags: ")
-    for tag in sort(collect(keys(ifd)))
-        print(io, "\n\t", ifd[tag])
+    for key in sort(collect(keys(ifd)))
+        tags = ifd[Iterable(key)]
+        for tag in tags
+            print(io, "\n\t", tag)
+        end
     end
 end
 
@@ -76,15 +117,15 @@ function Base.read(tf::TiffFile{O}, ::Type{IFD}) where O <: Unsigned
     # Regular TIFF's use 16bits instead of 32 bits for entry data
     N = O == UInt32 ? read(tf, UInt16) : read(tf, O)
 
-    entries = OrderedDict{UInt16, Tag}()
+    entries = IFD(O)
 
     for i in 1:N
         tag = read(tf, Tag)
-        entries[tag.tag] = tag
+        push!(entries[Iterable(tag.tag)], tag)
     end
 
     next_ifd = Int(read(tf, O))
-    IFD{O}(entries), next_ifd
+    entries, next_ifd
 end
 
 function Base.iterate(file::TiffFile{O}) where {O}
@@ -161,15 +202,17 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     N = length(ifd)
     O == UInt32 ? write(tf, UInt16(N)) : write(tf, UInt64(N))
 
-    sort!(ifd.tags)
-
     # keep track of which tags are too large to fit in the IFD slot and need a
     # remote location for their data
-    remotedata = OrderedDict{Tag, Vector{Int}}()
-    for (key, tag) in ifd
-        pos = position(tf.io)
-        if !write(tf, tag)
-            remotedata[tag] = [pos]
+    remotedata = Vector{Pair{Tag, Vector{Int}}}()
+    sorted_keys = sort(collect(keys(ifd)))
+    for k in sorted_keys
+        tags = ifd[Iterable(k)]
+        for tag in tags
+            pos = position(tf.io)
+            if !write(tf, tag)
+                push!(remotedata, tag => [pos])
+            end
         end
     end
 
@@ -186,7 +229,7 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
         if eltype(tag) === String
             data = data::SubString{String}
             if !endswith(data, '\0')
-                data *= "\0"
+                data *= '\0'
             end
             write(tf, data)  # compile-time dispatch
         else
