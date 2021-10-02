@@ -141,7 +141,6 @@ function Base.write(io::Stream, img::DenseTaggedImage)
         else
             ifd[SOFTWARE] = version
         end
-        sort!(ifd.tags)
 
         seek(tf.io, ifd_pos)
         prev_ifd_record = write(tf, ifd)

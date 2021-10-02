@@ -10,7 +10,7 @@ using FileIO
 using FixedPointNumbers
 using IndirectArrays
 using OffsetArrays
-using OrderedCollections
+using DataStructures
 using PkgVersion
 using ProgressMeter
 using Base.Iterators
