@@ -6,6 +6,9 @@ Wrap `io` with helper parameters to keep track of file attributes.
 $(FIELDS)
 """
 mutable struct TiffFile{O <: Unsigned, S <: Stream}
+    """A unique identifier for this file"""
+    uuid::Union{UUID, Nothing}
+
     """The relative path to this file"""
     filepath::String
 
@@ -19,7 +22,7 @@ mutable struct TiffFile{O <: Unsigned, S <: Stream}
     need_bswap::Bool
 end
 
-TiffFile{O}(s::Stream) where O <: Unsigned = TiffFile{O, typeof(s)}("", s, -1, false)
+TiffFile{O}(s::Stream) where O <: Unsigned = TiffFile{O, typeof(s)}(nothing, "", s, -1, false)
 TiffFile{O}(io::IO) where O <: Unsigned    = TiffFile{O}(getstream(format"TIFF", io))
 TiffFile{O}() where O <: Unsigned          = TiffFile{O}(IOBuffer())
 
@@ -30,7 +33,7 @@ function Base.read(io::Stream, ::Type{TiffFile})
     offset_size = offsetsize(io)
     first_offset_raw = read(io, offset_size)
     first_offset = Int(bs ? bswap(first_offset_raw) : first_offset_raw)
-    TiffFile{offset_size, typeof(io)}(filepath, io, first_offset, bs)
+    TiffFile{offset_size, typeof(io)}(nothing, filepath, io, first_offset, bs)
 end
 
 Base.read(io::IOStream, t::Type{TiffFile}) = read(getstream(format"TIFF", io, extract_filename(io)), t)

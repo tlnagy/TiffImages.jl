@@ -15,6 +15,7 @@ using PkgVersion
 using ProgressMeter
 using Base.Iterators
 using Inflate
+using UUIDs
 
 const PKGVERSION = @PkgVersion.Version 0
 
