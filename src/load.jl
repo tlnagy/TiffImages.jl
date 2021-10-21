@@ -24,23 +24,32 @@ function load(tf::TiffFile; verbose=true, mmap = false)
             loaded = load(tf, ifds, nplanes; verbose=verbose)
         end
     end
+    data = fixcolors(loaded, first(ifds))
 
+    close(tf.io)
+    return DenseTaggedImage(data, ifds)
+end
+
+"""
+    fixcolors(loaded, ifd)
+
+Wrap the raw eltype of an image with color if needed, e.g. for space efficient
+on-disk representations like palette-colored images and bitarrays. Otherwise,
+just return the passed image. 
+"""
+function fixcolors(loaded, ifd)
     if eltype(loaded) <: Palette
-        ifd = ifds[1]
         raw = rawtype(ifd)
         loadedr = reinterpret(raw, loaded)
         maxdepth = 2^(Int(ifd[BITSPERSAMPLE].data))-1
         colors = ifd[COLORMAP].data
         color_map = vec(reinterpret(RGB{N0f16}, reshape(colors, :, 3)'))
-        data = IndirectArray(loadedr, OffsetArray(color_map, 0:maxdepth))
+        return IndirectArray(loadedr, OffsetArray(color_map, 0:maxdepth))
     elseif eltype(loaded) <: Bool
-        data = Gray.(loaded)
+        return Gray.(loaded)
     else
-        data = loaded
+        return loaded
     end
-
-    close(tf.io)
-    return DenseTaggedImage(data, ifds)
 end
 
 function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, ::Nothing; verbose = true)
