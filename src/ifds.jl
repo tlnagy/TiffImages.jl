@@ -68,7 +68,7 @@ Base.delete!(ifd::IFD, key::TiffTag) = delete!(ifd, UInt16(key))
 Base.delete!(ifd::IFD, key::UInt16) = delete!(ifd.tags, key)
 
 Base.similar(::IFD{O}) where {O <: Unsigned} = IFD(O)
-Base.merge(ifd::IFD{O}, other::IFD{O}) where {O <: Unsigned} = IFD(O, DefaultDict(Vector{Int}, merge(ifd.tags, other.tags)))
+Base.merge(ifd::IFD{O}, other::IFD) where {O <: Unsigned} = IFD(O, DefaultDict(Vector{Int}, merge(ifd.tags, other.tags)))
 
 Base.setindex!(ifd::IFD, value::Tag, key::UInt16) = setindex!(ifd.tags, [value], key)
 Base.setindex!(ifd::IFD, value::Tag, key::TiffTag) = setindex!(ifd, value, UInt16(key))
