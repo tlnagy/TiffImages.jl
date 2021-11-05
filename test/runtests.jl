@@ -210,3 +210,10 @@ end
 @testset "Interpreting IFD layouts" begin
     include("layouts.jl")
 end
+
+@testset "Issue #69" begin
+    rawarray = Gray.(zeros(10, 10, 2))
+    ifds = [TiffImages.IFD(UInt64), TiffImages.IFD(UInt64)]
+    # test that the constructor can handle small images using 64bit offsets 
+    @test size(TiffImages.DenseTaggedImage(rawarray, ifds)) == size(rawarray)
+end
