@@ -110,7 +110,35 @@ end
 
 Base.write(io::IOStream, img::DenseTaggedImage) = write(getstream(format"TIFF", io, extract_filename(io)), img)
 
-function Base.write(io::Stream, img::DenseTaggedImage)
+function _writeslice(pagecache, tf::TiffFile{O, S}, slice, ifd, prev_ifd_record) where {O, S}
+    data_pos = position(tf.io) # start of data
+    plain_data_view = reshape(PermutedDimsArray(slice, (2, 1)), :)
+    pagecache .= reinterpret(UInt8, plain_data_view)
+    write(tf, pagecache) # write data
+    ifd_pos = position(tf.io)
+
+    # update record of previous IFD to point to this new IFD
+    seek(tf.io, prev_ifd_record)
+    write(tf, O(ifd_pos))
+
+    ifd[COMPRESSION] = COMPRESSION_NONE
+    ifd[STRIPOFFSETS] = O(data_pos)
+    ifd[STRIPBYTECOUNTS] = O(ifd_pos-data_pos)
+
+    version = "$(parentmodule(IFD)::Module).jl v$PKGVERSION"
+    if SOFTWARE in ifd
+        ifd[SOFTWARE] = "$(ifd[SOFTWARE].data);$version"
+    else
+        ifd[SOFTWARE] = version
+    end
+
+    seek(tf.io, ifd_pos)
+    prev_ifd_record = write(tf, ifd)
+    seekend(tf.io)
+    prev_ifd_record
+end
+
+function Base.write(io::Stream, img::DenseTaggedImage) where {T} 
     O = offset(img)
     tf = TiffFile{O}(io)
 
@@ -120,32 +148,10 @@ function Base.write(io::Stream, img::DenseTaggedImage)
 
     # For offseted arrays, `axes(img, 3) == 1:length(img.ifds)` does not hold in general
     for (idx, ifd) in zip(axes(img, 3), img.ifds)
-        data_pos = position(tf.io) # start of data
-        plain_data_view = reshape(PermutedDimsArray(view(img.data, :, :, idx), (2, 1)), :)
-        pagecache .= reinterpret(UInt8, plain_data_view)
-        write(tf, pagecache) # write data
-        ifd_pos = position(tf.io)
-
-        # update record of previous IFD to point to this new IFD
-        seek(tf.io, prev_ifd_record)
-        write(tf, O(ifd_pos))
-
-        ifd = first(img.ifds)
-        ifd[COMPRESSION] = COMPRESSION_NONE
-        ifd[STRIPOFFSETS] = O(data_pos)
-        ifd[STRIPBYTECOUNTS] = O(ifd_pos-data_pos)
-
-        version = "$(parentmodule(IFD)::Module).jl v$PKGVERSION"
-        if SOFTWARE in ifd
-            ifd[SOFTWARE] = "$(ifd[SOFTWARE].data);$version"
-        else
-            ifd[SOFTWARE] = version
-        end
-
-        seek(tf.io, ifd_pos)
-        prev_ifd_record = write(tf, ifd)
-        seekend(tf.io)
+        prev_ifd_record = _writeslice(pagecache, tf, view(img, :, :, idx), ifd, prev_ifd_record)
     end
+
+    prev_ifd_record
 end
 
 save(io::IO, data::DenseTaggedImage) where {IO <: Union{IOStream, Stream}} = write(io, data)
@@ -154,4 +160,5 @@ function save(filepath::String, data)
     open(filepath, "w") do io
         save(getstream(format"TIFF", io, filepath), data)
     end
+    nothing
 end
