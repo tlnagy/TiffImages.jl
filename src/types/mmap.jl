@@ -48,7 +48,12 @@ function DiskTaggedImage(file::TiffFile{O}, ifds::Vector{IFD{O}}) where {O}
     DiskTaggedImage(file, ifds, dims, cache, -1, zero(O), true)
 end
 
-memmap(filepath, data) = DiskTaggedImage(getstream(format"TIFF", open(filepath, "w+"), filepath), data)
+function memmap(filepath, data)
+    if isfile(filepath)
+        error("This file already exists, please use `TiffImages.load` to open")
+    end
+    DiskTaggedImage(getstream(format"TIFF", open(filepath, "w+"), filepath), data)
+end
 
 DiskTaggedImage(io::Stream, data::AbstractArray{T, 2}) where {T} = DiskTaggedImage(io, reshape(data, size(data)..., 1))
 function DiskTaggedImage(io::Stream, data::AbstractArray{T, 3}) where {T}
