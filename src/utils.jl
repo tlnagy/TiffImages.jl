@@ -7,18 +7,19 @@ on an IFD object replaces all `RemoteData`s with the respective data.
 
 $(FIELDS)
 """
-struct RemoteData{O <: Unsigned}
+struct RemoteData{O <: Unsigned, T}
     """Position of this data in the stream"""
     position::O
 
-    """The datatype stored at this location"""
-    datatype::DataType
-
     """The length of the data"""
     count::O
+
+    function RemoteData(position::O, datatype::DataType, count::O) where {O}
+        new{O, datatype}(position, count)
+    end
 end
 
-Base.position(o::RemoteData) = Int(o.pos)
+Base.position(o::R) where {R <: RemoteData} = Int(o.pos)
 
 const filepattern = r"<file (.*)>"
 const fdpattern = r"<fd (.*)>"

@@ -41,8 +41,8 @@
         t2 = read(tf, TiffImages.Tag)
 
         # make sure the data field contains our single offset from above
-        @test typeof(t2.data) <: TiffImages.RemoteData
-        @test t2.data.position == 12
+        @test typeof(t2) <: TiffImages.Tag{<: TiffImages.RemoteData}
+        @test getfield(t2, :data).position == 12
     end
 
     @testset "String length equal to offset size" begin
@@ -85,6 +85,11 @@ end
 
     seekstart(tf.io)
     read_ifd, next_ifd = read(tf, TiffImages.IFD)
+    
+    seekend(tf.io)
+    @test sizeof(ifd) == position(tf.io) # predicted size should match actual size
+    @test sizeof(read_ifd) == position(tf.io) # unloaded IFDs should also compute properly
+
     TiffImages.load!(tf, read_ifd)
 
     @test all(sort(collect(ifd), by = x -> x[1]) .== sort(collect(read_ifd), by = x -> x[1]))

@@ -31,25 +31,43 @@ function Base.getproperty(t::Tag{<: AbstractString}, f::Symbol)
         getfield(t, f)
     end
 end
+Base.getproperty(t::Tag{<: RemoteData}, f::Symbol) = (f == :data) ? error("Data hasn't been loaded, use `load!` on this IFD") : getfield(t, f)
+
+isloaded(t::Tag) = true
+isloaded(t::Tag{<: RemoteData}) = false
 
 Base.length(t::Tag{<: AbstractVector}) = length(t.data)
 Base.length(t::Tag{<: AbstractString}) = (endswith(t.data, '\0') ? length(t.data) : length(t.data) + 1)
+Base.length(t::Tag{<: RemoteData}) = getfield(t, :data).count
 Base.length(t::Tag) = 1
 
 Base.eltype(::Tag{T}) where {T} = T
 Base.eltype(::Tag{<: AbstractVector{T}}) where {T} = T
-Base.eltype(t::Tag{RemoteData}) = t.data.datatype
+Base.eltype(t::Tag{RemoteData{O, T}}) where {O, T} = T
+
+"""
+    sizeof(tag::TiffImages.Tag)
+
+Minimum number of bytes that the _data_ in `tag` will use on disk.
+
+!!! note 
+    Actual space on disk will be different because the tag's representation depends on
+    the file's offset. For example, given a 2 bytes of data in `tag` and a file with
+    `UInt32` offsets, the actual usage on disk will be `sizeof(UInt32)=4` for the
+    data + tag overhead
+"""
+Base.sizeof(t::Tag{T}) where {T} = bytes(T) * length(t)
 
 load(::TiffFile, t::Tag) = t
 
-function load(tf::TiffFile{O}, t::Tag{RemoteData{O}}) where {O <: Unsigned}
-    T = t.data.datatype
-    N = t.data.count
+function load(tf::TiffFile{O}, t::Tag{RemoteData{O, T}}) where {O <: Unsigned, T}
+    t_data = getfield(t, :data)
+    N = t_data.count
     nb = bytes(T)::Int
     rawdata = Vector{UInt8}(undef, nb*N)
 
     pos = position(tf.io)
-    seek(tf, t.data.position)
+    seek(tf, t_data.position)
     read!(tf, rawdata)
 
     # if this datatype is comprised of multiple bytes and this file needs to be
@@ -77,7 +95,7 @@ end
 bytes(x::Type) = sizeof(x)
 bytes(::Type{Any}) = 1
 bytes(::Type{String}) = 1
-bytes(::Type{RemoteData{O}}) where {O} = one(O)
+bytes(::Type{RemoteData{O, T}}) where {O, T} = bytes(T)
 bytes(::Type{<: AbstractVector{T}}) where {T} = bytes(T)
 
 function Base.read(tf::TiffFile{O}, ::Type{Tag}) where O <: Unsigned
@@ -112,7 +130,7 @@ function Base.read(tf::TiffFile{O}, ::Type{Tag}) where O <: Unsigned
     end
 end
 
-_showdata(io::IO, t::Tag{RemoteData{O}}) where {O} = print(io, "REMOTE@$(t.data.position) $(t.data.datatype)[] len=$(t.data.count)")
+_showdata(io::IO, t::Tag{RemoteData{O, T}}) where {O, T} = print(io, "REMOTE@$(getfield(t, :data).position) $(T)[] len=$(getfield(t, :data).count)")
 _showdata(io::IO, t::Tag{<: AbstractString}) = print(io, "\"", first(t.data, 20), (length(t.data) > 20) ? "..." : "", "\"")
 _showdata(io::IO, t::Tag{<: AbstractVector}) = print(io, "$(eltype(t.data))[", join(t.data[1:min(5, end)], ", "), (length(t.data) > 5) ? ", ..." : "", "]")
 _showdata(io::IO, t::Tag) = print(io, t.data)
@@ -141,7 +159,7 @@ entirely in the IFD space and was written to disk. Otherwise it returns false.
 function Base.write(tf::TiffFile{O}, t::Tag{T}) where {O <: Unsigned, T}
     # if the data are too large to fit then we'll need to skip writing this tag
     # for now until we know the length of the entire IFD
-    if length(t)*bytes(T) > sizeof(O)
+    if sizeof(t) > sizeof(O)
         _writeblank(tf)
         return false
     end
@@ -167,11 +185,12 @@ function Base.write(tf::TiffFile{O}, t::Tag{T}) where {O <: Unsigned, T}
     true
 end
 
-function Base.write(tf::TiffFile{O}, t::Tag{RemoteData{O}}) where {O <: Unsigned}
+function Base.write(tf::TiffFile{O}, t::Tag{RemoteData{O, T}}) where {O <: Unsigned, T}
     write(tf, t.tag)
-    write(tf, julian_to_tiff[t.data.datatype])
-    write(tf, t.data.count)
-    write(tf, t.data.position)
+    write(tf, julian_to_tiff[T])
+    t_data = getfield(t, :data)
+    write(tf, t_data.count)
+    write(tf, t_data.position)
     true
 end
 

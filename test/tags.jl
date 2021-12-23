@@ -7,7 +7,9 @@
     write(tf, UInt16[8, 1])
 
     seekstart(tf.io)
-    @test read(tf, TiffImages.Tag) == TiffImages.Tag(TiffImages.IMAGEWIDTH, Any[8, 0, 1, 0])
+    tag = read(tf, TiffImages.Tag)
+    @test tag == TiffImages.Tag(TiffImages.IMAGEWIDTH, Any[8, 0, 1, 0])
+    @test sizeof(tag) == 4
 end
 
 @testset "Data array only part of data field" begin
@@ -20,7 +22,9 @@ end
     write(tf, UInt32(0))
 
     seekstart(tf.io)
-    @test length(read(tf, TiffImages.Tag).data) == 2 # not 4
+    tag = read(tf, TiffImages.Tag)
+    @test length(tag.data) == 2 # not 4
+    @test sizeof(tag) == 4 # number of bytes is still 2*2
 end
 
 @testset "Rational, full space" begin
@@ -32,5 +36,12 @@ end
     write(tf, ratio)
 
     seekstart(tf.io)
-    @test read(tf, TiffImages.Tag).data == ratio
+    tag = read(tf, TiffImages.Tag)
+    @test tag.data == ratio
+    @test sizeof(tag) == 8 # two UInt64s 
+end
+
+@testset "Additional sizeof tests" begin
+    tag = TiffImages.Tag(TiffImages.IMAGEDESCRIPTION, "test")
+    @test sizeof(tag) == 5 # 4 bytes + NUL terminator
 end
