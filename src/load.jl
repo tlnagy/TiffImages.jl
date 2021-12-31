@@ -1,3 +1,12 @@
+"""
+    $(SIGNATURES)
+
+Loads a TIFF image. Optional flags `verbose` and `mmap` are set to true and
+false by default, respectively. Setting the former to false will hide the
+loading bar, while setting the later to true will memory-mapped the image.
+
+See [Memory-mapping TIFFs](@ref) for more details about memory-mapping
+"""
 function load(filepath::String; verbose=true, mmap = false)
     open(filepath) do io
         load(io; verbose=verbose, mmap=mmap)

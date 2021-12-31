@@ -1,7 +1,15 @@
 # Public interface
 
+### Reading/Writing
+
 ```@docs
+TiffImages.load
 memmap
-DiskTaggedImage
 ```
-WIP
+
+### Output Types
+
+```@docs
+TiffImages.DenseTaggedImage
+TiffImages.DiskTaggedImage
+```

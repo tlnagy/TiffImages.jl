@@ -2,8 +2,9 @@
     $(TYPEDEF)
 
 An image file directory is a sorted collection of the tags representing this
-plane in the TIFF file. They behave like dictionaries, so given an IFD called
-`ifd`, we can add new tags as follows:
+plane in the TIFF file. They behave like dictionaries except that tags aren't
+required to be unique, so given an IFD called `ifd`, we can add new tags as
+follows: 
 
 ```jldoctest; setup = :(ifd = TiffImages.IFD(UInt32))
 julia> ifd[TiffImages.IMAGEDESCRIPTION] = "Some details";
@@ -15,6 +16,10 @@ IFD, with tags:
 	Tag(IMAGEWIDTH, 512)
 	Tag(IMAGEDESCRIPTION, "Some details")
 ```
+
+!!! note
+    Tags are not required to be unique! See [`TiffImages.Iterable`](@ref) for
+    how to work with duplicate tags.
 """
 struct IFD{O <: Unsigned}
     tags::DefaultDict{UInt16, Vector{Tag}, DataType}
@@ -122,6 +127,13 @@ function iscontiguous(ifd::IFD)
     end
 end
 
+"""
+    $(SIGNATURES)
+
+Updates an [`TiffImages.IFD`](@ref) by replacing all instances of the
+placeholder type [`TiffImages.RemoteData`](@ref) with the actual data from the
+file `tf`.
+"""
 function load!(tf::TiffFile, ifd::IFD)
     for key in sort(collect(keys(ifd)))
         tags = ifd[Iterable(key)]

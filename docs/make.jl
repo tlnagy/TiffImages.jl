@@ -23,8 +23,9 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Examples" => [
-            "Reading TIFFs" => joinpath("examples", "reading.md")
-            "Writing TIFFs" => joinpath("examples", "writing.md")
+            "Reading TIFFs" => joinpath("examples", "reading.md"),
+            "Writing TIFFs" => joinpath("examples", "writing.md"),
+            "Memory-mapping TIFFs" => joinpath("examples", "mmap.md")
         ],
         "Library" => [
             "Public" => joinpath("lib", "public.md"),

@@ -2,7 +2,7 @@
     RemoteData
 
 A placeholder type to describe the location and properties of remote data that
-is too large to fit directly in a tag's spot in the IFD. Calling [`load!`](@ref)
+is too large to fit directly in a tag's spot in the IFD. Calling [`TiffImages.load!`](@ref)
 on an IFD object replaces all `RemoteData`s with the respective data.
 
 $(FIELDS)

@@ -29,6 +29,9 @@ mutable struct DiskTaggedImage{T <: Colorant, O <: Unsigned, AA <: AbstractArray
     """
     cache_index::Int
 
+    """
+    Position of last loaded IFD, updated whenever a slice is appended
+    """
     last_ifd_offset::O
 
     """
@@ -51,10 +54,11 @@ end
 """
     memmap(T, filepath; bigtiff)
 
-Create a new memory-mapped file ready for appending future slices. The `bigtiff`
-flag, if true, allows 64-bit offsets for data larger than ~4GB.
+Create a new memory-mapped file ready with element type `T` for appending future
+slices. The `bigtiff` flag, if true, allows 64-bit offsets for data larger than
+~4GB. 
 
-```jldoctest
+```jldoctest; setup=:(rm("test.tif"))
 julia> using ColorTypes, FixedPointNumbers # for Gray{N0f8} type
 
 julia> img = memmap(Gray{N0f8}, "test.tif"); # make memory-mapped image
@@ -109,9 +113,9 @@ function Base.getindex(A::DiskTaggedImage{T, O, AA}, i1::Int, i2::Int, i::Int) w
 end
 
 function Base.setindex!(A::DiskTaggedImage, I...)
-    error("This array is on disk and is read only. Convert to a mutable in-memory version by running "*
+    error("Unable to mutate inplace since this array is on disk. Convert to a mutable in-memory version by running "* 
           "`copy(arr)`. \n\n𝗡𝗼𝘁𝗲: For large files this can be quite expensive. A future PR will add "*
-          "support for reading and writing to/from disk.")
+          "support for writing inplace to disk. See `push!` for appending to an array.")
 end
 
 """
@@ -158,9 +162,9 @@ function Base.show(io::IO, ::MIME"text/plain", A::DiskTaggedImage{T, O, AA}) whe
     else
         printstyled(io, " (writable)"; color=:green)
     end
-    println()
+    println(io)
     ondisk = sizeof(A.file)
     ondisk += (size(A) == (-1, -1, -1)) ? 0 : sum(sizeof.(A.ifds)) + sizeof(T) * reduce(*, size(A))
-    println("    Current file size on disk:   $(Base.format_bytes(ondisk))")
-    println("    Addressable space remaining: $(Base.format_bytes(typemax(O) - ondisk))")
+    println(io, "    Current file size on disk:   $(Base.format_bytes(ondisk))")
+    println(io, "    Addressable space remaining: $(Base.format_bytes(typemax(O) - ondisk))")
 end

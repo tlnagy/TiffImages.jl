@@ -23,12 +23,27 @@ function Tag(tag::UInt16, data::AbstractVector{T}) where {T}
     end
 end
 
-function Base.getproperty(t::Tag{<: AbstractString}, f::Symbol)
-    if f == :data
-        # strip NUL terminators from the end of strings
-        strip(getfield(t, :data), '\0')
+function Base.getproperty(t::Tag{T}, f::Symbol) where {T}
+    if f === :data
+        isa(t, Tag{Vector{UInt32}}) ? getfield(t, :data)::Vector{UInt32} :
+        isa(t, Tag{Vector{UInt16}}) ? getfield(t, :data)::Vector{UInt16} :
+        isa(t, Tag{Vector{UInt8}})  ? getfield(t, :data)::Vector{UInt8} :
+        isa(t, Tag{UInt32})         ? getfield(t, :data)::UInt32 :
+        isa(t, Tag{UInt16})         ? getfield(t, :data)::UInt16 :
+        isa(t, Tag{UInt8})          ? getfield(t, :data)::UInt8 :
+        isa(t, Tag{Int64})          ? getfield(t, :data)::Int64 :
+        getfield(t, :data)
     else
-        getfield(t, f)
+        getfield(t, :tag)::UInt16
+    end
+end
+
+function Base.getproperty(t::Tag{<: AbstractString}, f::Symbol)
+    if f === :data
+        # strip NUL terminators from the end of strings
+        strip(getfield(t, :data)::String, '\0')
+    else
+        getfield(t, :tag)::UInt16
     end
 end
 Base.getproperty(t::Tag{<: RemoteData}, f::Symbol) = (f == :data) ? error("Data hasn't been loaded, use `load!` on this IFD") : getfield(t, f)
