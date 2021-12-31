@@ -58,7 +58,7 @@ Create a new memory-mapped file ready with element type `T` for appending future
 slices. The `bigtiff` flag, if true, allows 64-bit offsets for data larger than
 ~4GB. 
 
-```jldoctest; setup=:(rm("test.tif"))
+```jldoctest; setup=:(rm("test.tif", force=true))
 julia> using ColorTypes, FixedPointNumbers # for Gray{N0f8} type
 
 julia> img = memmap(Gray{N0f8}, "test.tif"); # make memory-mapped image
