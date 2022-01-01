@@ -22,13 +22,13 @@ TiffImages.jl supports:
 - Thorough testing
 - HDR images stored as 32bit or 64bit floats
 - BigTIFFs
-- Memory-mapped loading
+- Memory-mapped loading/writing
 
 ## Usage
 
 Check out the examples to see how to use `TiffImages.jl`
 
 ```@contents
-Pages = ["examples/reading.md", "examples/writing.md"]
+Pages = ["examples/reading.md", "examples/writing.md", "examples/mmap.md"]
 Depth = 1
 ```

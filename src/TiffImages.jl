@@ -31,6 +31,8 @@ include(joinpath("types", "dense.jl"))
 include(joinpath("types", "mmap.jl"))
 include("load.jl")
 
+export memmap
+
 @deprecate TiffFile(::Type{O}) where O<:Unsigned TiffFile{O}()
 
 ## Precompilation helper

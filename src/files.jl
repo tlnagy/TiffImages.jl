@@ -38,6 +38,14 @@ end
 
 Base.read(io::IOStream, t::Type{TiffFile}) = read(getstream(format"TIFF", io, extract_filename(io)), t)
 
+"""
+    sizeof(file)
+
+Number of bytes that `file`'s header will use on disk
+"""
+Base.sizeof(file::TiffFile{UInt32}) = 8
+Base.sizeof(file::TiffFile{UInt64}) = 16
+
 function Base.write(file::TiffFile{O}) where O
     seekstart(file.io)
 

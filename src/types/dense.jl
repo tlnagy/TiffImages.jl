@@ -21,7 +21,9 @@ function DenseTaggedImage(data::AbstractArray{T, 2}, ifd::IFD{O}) where {T, O}
 end
 
 DenseTaggedImage(data::AbstractArray{T, 3}) where {T} = DenseTaggedImage(data, _constructifd(data))
+DenseTaggedImage(data::AbstractArray{T, 3}, ::Type{O}) where {T, O} = DenseTaggedImage(data, _constructifd(data, O))
 DenseTaggedImage(data::AbstractArray{T, 2}) where {T} = DenseTaggedImage(data, [_constructifd(data, UInt32)])
+DenseTaggedImage(data::AbstractArray{T, 2}, ::Type{O}) where {T, O} = DenseTaggedImage(data, [_constructifd(data, UInt32)])
 
 Base.size(t::DenseTaggedImage) = size(t.data)
 Base.axes(t::DenseTaggedImage) = axes(t.data)
@@ -45,12 +47,7 @@ while for BigTIFFs it will be UInt64.
 """
 offset(::DenseTaggedImage{T, N, O, AA}) where {T, N, O, AA} = O
 
-"""
-    _constructifd(data, offset)
-
-Generate a IFD with the minimal set of tags to describe `data`.
-"""
-function _constructifd(data::AbstractArray{T, 3}) where {T <: Colorant}
+function _constructifd(data::AbstractArray{T, 3}) where {T <: Colorant} 
     offset = UInt32
     # this is only a crude estimate for the amount information that we can store
     # in regular TIFF. The real value should take into account the size of the
@@ -59,11 +56,18 @@ function _constructifd(data::AbstractArray{T, 3}) where {T <: Colorant}
         @info "Array too large to fit in standard TIFF container, switching to BigTIFF"
         offset = UInt64
     end
+    _constructifd(data, offset)
+end
+"""
+    _constructifd(data, offset)
 
-    ifds = IFD{offset}[]
+Generate a IFD with the minimal set of tags to describe `data`.
+"""
+function _constructifd(data::AbstractArray{T, 3}, ::Type{O}) where {T <: Colorant, O <: Unsigned}
+    ifds = IFD{O}[]
 
     for slice in axes(data, 3)
-        push!(ifds, _constructifd(view(data, :, :, slice), offset))
+        push!(ifds, _constructifd(view(data, :, :, slice), O))
     end
 
     ifds
@@ -110,7 +114,35 @@ end
 
 Base.write(io::IOStream, img::DenseTaggedImage) = write(getstream(format"TIFF", io, extract_filename(io)), img)
 
-function Base.write(io::Stream, img::DenseTaggedImage)
+function _writeslice(pagecache, tf::TiffFile{O, S}, slice, ifd, prev_ifd_record) where {O, S}
+    data_pos = position(tf.io) # start of data
+    plain_data_view = reshape(PermutedDimsArray(slice, (2, 1)), :)
+    pagecache .= reinterpret(UInt8, plain_data_view)
+    write(tf, pagecache) # write data
+    ifd_pos = position(tf.io)
+
+    # update record of previous IFD to point to this new IFD
+    seek(tf.io, prev_ifd_record)
+    write(tf, O(ifd_pos))
+
+    ifd[COMPRESSION] = COMPRESSION_NONE
+    ifd[STRIPOFFSETS] = O(data_pos)
+    ifd[STRIPBYTECOUNTS] = O(ifd_pos-data_pos)
+
+    version = "$(parentmodule(IFD)::Module).jl v$PKGVERSION"
+    if SOFTWARE in ifd
+        ifd[SOFTWARE] = "$(ifd[SOFTWARE].data);$version"
+    else
+        ifd[SOFTWARE] = version
+    end
+
+    seek(tf.io, ifd_pos)
+    prev_ifd_record = write(tf, ifd)
+    seekend(tf.io)
+    prev_ifd_record
+end
+
+function Base.write(io::Stream, img::DenseTaggedImage) where {T} 
     O = offset(img)
     tf = TiffFile{O}(io)
 
@@ -120,32 +152,10 @@ function Base.write(io::Stream, img::DenseTaggedImage)
 
     # For offseted arrays, `axes(img, 3) == 1:length(img.ifds)` does not hold in general
     for (idx, ifd) in zip(axes(img, 3), img.ifds)
-        data_pos = position(tf.io) # start of data
-        plain_data_view = reshape(PermutedDimsArray(view(img.data, :, :, idx), (2, 1)), :)
-        pagecache .= reinterpret(UInt8, plain_data_view)
-        write(tf, pagecache) # write data
-        ifd_pos = position(tf.io)
-
-        # update record of previous IFD to point to this new IFD
-        seek(tf.io, prev_ifd_record)
-        write(tf, O(ifd_pos))
-
-        ifd = first(img.ifds)
-        ifd[COMPRESSION] = COMPRESSION_NONE
-        ifd[STRIPOFFSETS] = O(data_pos)
-        ifd[STRIPBYTECOUNTS] = O(ifd_pos-data_pos)
-
-        version = "$(parentmodule(IFD)::Module).jl v$PKGVERSION"
-        if SOFTWARE in ifd
-            ifd[SOFTWARE] = "$(ifd[SOFTWARE].data);$version"
-        else
-            ifd[SOFTWARE] = version
-        end
-
-        seek(tf.io, ifd_pos)
-        prev_ifd_record = write(tf, ifd)
-        seekend(tf.io)
+        prev_ifd_record = _writeslice(pagecache, tf, view(img, :, :, idx), ifd, prev_ifd_record)
     end
+
+    prev_ifd_record
 end
 
 save(io::IO, data::DenseTaggedImage) where {IO <: Union{IOStream, Stream}} = write(io, data)
@@ -154,4 +164,7 @@ function save(filepath::String, data)
     open(filepath, "w") do io
         save(getstream(format"TIFF", io, filepath), data)
     end
+    nothing
 end
+
+Base.push!(A::DenseTaggedImage{T, N, O, AA}, data) where {T, N, O, AA} = error("push! is only supported for memory mapped images. See `memmap`.")

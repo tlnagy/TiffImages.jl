@@ -2,8 +2,9 @@
     $(TYPEDEF)
 
 An image file directory is a sorted collection of the tags representing this
-plane in the TIFF file. They behave like dictionaries, so given an IFD called
-`ifd`, we can add new tags as follows:
+plane in the TIFF file. They behave like dictionaries except that tags aren't
+required to be unique, so given an IFD called `ifd`, we can add new tags as
+follows: 
 
 ```jldoctest; setup = :(ifd = TiffImages.IFD(UInt32))
 julia> ifd[TiffImages.IMAGEDESCRIPTION] = "Some details";
@@ -15,6 +16,10 @@ IFD, with tags:
 	Tag(IMAGEWIDTH, 512)
 	Tag(IMAGEDESCRIPTION, "Some details")
 ```
+
+!!! note
+    Tags are not required to be unique! See [`TiffImages.Iterable`](@ref) for
+    how to work with duplicate tags.
 """
 struct IFD{O <: Unsigned}
     tags::DefaultDict{UInt16, Vector{Tag}, DataType}
@@ -54,6 +59,7 @@ end
 
 Base.length(ifd::IFD) = sum(map(length, values(ifd.tags)))
 Base.keys(ifd::IFD) = keys(ifd.tags)
+Base.values(ifd::IFD) = values(ifd.tags)
 Base.iterate(ifd::IFD) = iterate(ifd.tags)
 Base.iterate(ifd::IFD, n::Int) = iterate(ifd.tags, n)
 
@@ -80,6 +86,33 @@ Base.setindex!(ifd::IFD, value, key::Iterable{TiffTag}) = setindex!(ifd, value, 
 Base.setindex!(ifd::IFD, value, key::Iterable{UInt16}) = setindex!(ifd, Tag(key.key, value), key)
 Base.setindex!(ifd::IFD, value::Tag, key::Iterable{UInt16}) = push!(ifd.tags[key.key], value)
 
+function isloaded(ifd::IFD)
+    for tags in values(ifd.tags)
+        for tag in tags
+            (!isloaded(tag)) && return false
+        end
+    end
+    true
+end
+
+"""
+    sizeof(ifd)
+
+Number of bytes that an IFD will use on disk.
+"""
+function Base.sizeof(ifd::IFD{O}) where {O}
+    sz = O == UInt32 ? 2 : sizeof(O)
+    for tags in values(ifd)
+        for tag in tags
+            # tag, data, length, and data
+            sz += 2 + 2 + sizeof(O) + sizeof(O)
+            if sizeof(tag) > sizeof(O) # if data in tag is larger than slot
+                sz += sizeof(tag) # we have add all the additional bytes
+            end
+        end
+    end
+    sz += sizeof(O) # slot for subsequent IFD locations
+end
 """
     $SIGNATURES
 
@@ -94,6 +127,13 @@ function iscontiguous(ifd::IFD)
     end
 end
 
+"""
+    $(SIGNATURES)
+
+Updates an [`TiffImages.IFD`](@ref) by replacing all instances of the
+placeholder type [`TiffImages.RemoteData`](@ref) with the actual data from the
+file `tf`.
+"""
 function load!(tf::TiffFile, ifd::IFD)
     for key in sort(collect(keys(ifd)))
         tags = ifd[Iterable(key)]
@@ -199,6 +239,10 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
 end
 
 function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
+    if !isloaded(ifd)
+        error("Cannot write unloaded IFDs. Use `load!` to populate tags with remote data")
+    end
+
     N = length(ifd)
     O == UInt32 ? write(tf, UInt16(N)) : write(tf, UInt64(N))
 

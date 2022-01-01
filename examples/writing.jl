@@ -25,7 +25,22 @@ data = rand(RGB{N0f8}, 10, 10)
 #md #     [common strategies](#Strategies-for-saving-common-types) section
 #md #     below for tips.
 
-# ## Converting to `TiffImages.jl`'s TIFF type
+# ## Simple cases
+
+# In most simple cases, all you need to do is use the `save` function
+
+using TiffImages
+TiffImages.save("test.tif", data)
+
+# That's it! TiffImages will convert your data into its own internal file type
+# and then rapidly write it to disk. See the writing section of 
+# [Memory-mapping TIFFs](@ref) for building a TIFF piece by piece.
+
+# ## Complex cases
+# If you need more fine-grained control over what tags are included when the
+# image is written, this section is for you!
+
+# ### Converting to `TiffImages.jl`'s TIFF type
 # Next lets convert `data` to a TIFF type
 
 using TiffImages
@@ -49,7 +64,7 @@ dump(img; maxdepth=1)
 ifd = first(img.ifds) # since our data is 2D
 ifd
 
-# ## Manipulating TIFF Tags
+# ### Manipulating TIFF Tags
 #
 # These are some of the most basic tags that are required by the TIFF spec. We
 # can even update it to add our own custom tags
@@ -72,7 +87,7 @@ ifd
 #md #     Careful with `delete!`, if any of core tags are deleted, TiffImages.jl and
 #md #     other readers might fail to read the file
 
-# ## Saving to disk
+# ### Saving to disk
 #
 # Once you're happy with your TIFF object, you can write it to disk as follows:
 

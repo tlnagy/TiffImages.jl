@@ -189,18 +189,7 @@ end
 end
 
 @testset "Mmap" begin
-    filepath = get_example("julia.tif")
-    img = TiffImages.load(filepath, mmap=true)
-    @test size(img) == (300, 500, 1)
-    @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
-    # force close the stream behind the file to see if it's properly reopened 
-    close(img.data.file.io)
-    @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
-
-    # TODO: inefficient convert method
-    img_cvt = convert(Array{eltype(img), ndims(img)}, img)
-    @test img_cvt == img.data
-    @test img_cvt !== img.data
+    include("mmap.jl")
 end
 
 @testset "Writing" begin

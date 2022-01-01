@@ -1,3 +1,15 @@
 # Public interface
 
-WIP
+### Reading/Writing
+
+```@docs
+TiffImages.load
+memmap
+```
+
+### Output Types
+
+```@docs
+TiffImages.DenseTaggedImage
+TiffImages.DiskTaggedImage
+```

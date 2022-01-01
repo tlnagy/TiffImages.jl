@@ -9,5 +9,13 @@ TIFF data is loaded, you have come to right place.
 TiffImages.TiffFile
 TiffImages.IFD
 TiffImages.Tag
+TiffImages.Iterable
 TiffImages.RemoteData
+```
+
+### Functions
+
+```@docs
+TiffImages.load!
+TiffImages.sizeof
 ```
