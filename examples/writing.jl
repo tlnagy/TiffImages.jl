@@ -34,7 +34,7 @@ TiffImages.save("test.tif", data)
 
 # That's it! TiffImages will convert your data into its own internal file type
 # and then rapidly write it to disk. See the writing section of 
-# [`Memory-mapping TIFFs`](@ref) for building a TIFF piece by piece.
+# [Memory-mapping TIFFs](@ref) for building a TIFF piece by piece.
 
 # ## Complex cases
 # If you need more fine-grained control over what tags are included when the

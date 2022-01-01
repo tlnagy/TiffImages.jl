@@ -52,7 +52,7 @@ img[:, :, 2]
 #     in the latter case, each whole slice has to be loaded to only grab a single 
 #     element
 
-using Colors
+using ColorTypes
 using MappedArrays
 
 eltype(img)
