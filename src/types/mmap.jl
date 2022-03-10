@@ -4,6 +4,15 @@
 A type to represent memory-mapped TIFF data. Useful for opening and operating on
 images too large to store in memory.
 
+```jldoctest
+julia> using TiffImages, ColorTypes
+
+julia> img = TiffImages.memmap(Gray{Float32}, joinpath(mktempdir(), "test.tif"))
+32-bit DiskTaggedImage{Gray{Float32}} 0×0×0 (writable)
+    Current file size on disk:   8 bytes
+    Addressable space remaining: 4.000 GiB
+```
+
 $(FIELDS)
 """
 mutable struct DiskTaggedImage{T <: Colorant, O <: Unsigned, AA <: AbstractArray} <: AbstractDenseTIFF{T, 3}
@@ -84,14 +93,14 @@ function DiskTaggedImage(::Type{T}, io::Stream; bigtiff = false) where {T}
 
     last_ifd_offset = write(tf) # write out header
 
-    DiskTaggedImage(tf, IFD{O}[], (-1, -1, -1), Array{T}(undef, 1, 1), -1, O(last_ifd_offset), false)
+    DiskTaggedImage(tf, IFD{O}[], (0, 0, 0), Array{T}(undef, 1, 1), -1, O(last_ifd_offset), false)
 end
 
 Base.size(A::DiskTaggedImage) = A.dims
 offset(::DiskTaggedImage{T, O, AA}) where {T, O, AA} = O
 
 function Base.getindex(A::DiskTaggedImage{T, O, AA}, i1::Int, i2::Int, i::Int) where {T, O, AA}
-    (size(A) == (-1, -1, -1)) && error("This image has not been initialized, please `push!` data into it first")
+    (size(A) == (0, 0, 0)) && error("This image has not been initialized, please `push!` data into it first")
     # check the loaded cache is already the correct slice
     if A.cache_index == i
         return A.cache[i2, i1]
@@ -127,7 +136,7 @@ target `img` and the `img` must be not be readonly.
 function Base.push!(A::DiskTaggedImage{T, O, AA}, data::AbstractMatrix{T}) where {T, O, AA}
     (A.readonly) && error("This image is read only")
 
-    if size(A) == (-1, -1, -1) # if this is the initial slice pushed, initialize the size
+    if size(A) == (0, 0, 0) # if this is the initial slice pushed, initialize the size
         A.dims = (size(data)..., 0) 
     end
 
@@ -164,7 +173,7 @@ function Base.show(io::IO, ::MIME"text/plain", A::DiskTaggedImage{T, O, AA}) whe
     end
     println(io)
     ondisk = sizeof(A.file)
-    ondisk += (size(A) == (-1, -1, -1)) ? 0 : sum(sizeof.(A.ifds)) + sizeof(T) * reduce(*, size(A))
+    ondisk += (size(A) == (0, 0, 0)) ? 0 : sum(sizeof.(A.ifds)) + sizeof(T) * reduce(*, size(A))
     println(io, "    Current file size on disk:   $(Base.format_bytes(ondisk))")
     println(io, "    Addressable space remaining: $(Base.format_bytes(typemax(O) - ondisk))")
 end

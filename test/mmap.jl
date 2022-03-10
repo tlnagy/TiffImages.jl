@@ -16,6 +16,11 @@ end
 @testset "De novo construction" begin
     img = memmap(Gray{N0f8}, "test.tif")
 
+    # a newly initialized file should have every dimension equal to zero and
+    # error if accessed
+    @test size(img) == (0, 0, 0)
+    @test_throws ErrorException img[1, 1, 1]
+
     push!(img, rand(Gray{N0f8}, 100, 100))
     @test size(img) == (100, 100, 1)
     @test TiffImages.offset(img) == UInt32
@@ -29,4 +34,7 @@ end
         @test size(img) == (100, 100, 1)
         @test TiffImages.offset(img) == UInt64
     end
+
+    img.readonly = true
+    @test_throws ErrorException push!(img, rand(Gray{N0f8}, 100, 100))
 end
