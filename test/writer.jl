@@ -71,7 +71,7 @@
         ifd[TiffImages.IMAGEDESCRIPTION] = "αβγ" # 2 bytes each, 6 total
         ifd[TiffImages.SOFTWARE] = "∫" # 3 byte character
 
-        tf = TiffImages.TiffFile(UInt32)
+        tf = TiffImages.TiffFile{UInt32}()
         write(tf, ifd)
 
         ifd2 = first(tf)
