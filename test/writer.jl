@@ -65,6 +65,21 @@
         @test getfield(t4, :data) == "tes\0"
         @test t4.data == "tes"
     end
+
+    @testset "UTF-8 strings" begin
+        ifd = TiffImages.IFD(UInt32)
+        ifd[TiffImages.IMAGEDESCRIPTION] = "αβγ" # 2 bytes each, 6 total
+        ifd[TiffImages.SOFTWARE] = "∫" # 3 byte character
+
+        tf = TiffImages.TiffFile(UInt32)
+        write(tf, ifd)
+
+        ifd2 = first(tf)
+        TiffImages.load!(tf, ifd2)
+
+        @test ifd[TiffImages.SOFTWARE] == ifd2[TiffImages.SOFTWARE]
+        @test ifd[TiffImages.IMAGEDESCRIPTION] == ifd2[TiffImages.IMAGEDESCRIPTION] # test remote data utf-8
+    end
 end
 
 @testset "ifds" begin

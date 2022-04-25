@@ -52,7 +52,7 @@ isloaded(t::Tag) = true
 isloaded(t::Tag{<: RemoteData}) = false
 
 Base.length(t::Tag{<: AbstractVector}) = length(t.data)
-Base.length(t::Tag{<: AbstractString}) = (endswith(t.data, '\0') ? length(t.data) : length(t.data) + 1)
+Base.length(t::Tag{<: AbstractString}) = (endswith(t.data, '\0') ? ncodeunits(t.data) : ncodeunits(t.data) + 1)
 Base.length(t::Tag{<: RemoteData}) = getfield(t, :data).count
 Base.length(t::Tag) = 1
 
