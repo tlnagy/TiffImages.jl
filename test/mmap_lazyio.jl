@@ -45,10 +45,10 @@ end
     # 3d
     img0 = rand(Gray{N0f16}, 1000, 1000, 40)
     filepath = tempname() * ".tif"
-    TiffImages.save("/tmp/stack.tif", img0);
-    img1 = TiffImages.load("/tmp/stack.tif");
-    img2 = TiffImages.load("/tmp/stack.tif"; mmap=true);
-    img3 = TiffImages.load("/tmp/stack.tif"; lazyio=true);
+    TiffImages.save(filepath, img0);
+    img1 = TiffImages.load(filepath);
+    img2 = TiffImages.load(filepath; mmap=true);
+    img3 = TiffImages.load(filepath; lazyio=true);
     @test size(img1) == size(img2) == size(img3) == size(img0)
     @test img1[1,2,3] == img2[1,2,3] == img3[1,2,3] == img0[1,2,3]
     c = img0[1,2,3]
