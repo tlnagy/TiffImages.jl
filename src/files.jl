@@ -118,6 +118,7 @@ Base.write(file::TiffFile, t) = write(file.io.io, t)::Int
 Base.write(file::TiffFile, arr::AbstractVector{Any}) = write(file.io.io, Array{UInt8}(arr))::Int
 
 Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
+FileIO.stream(file::TiffFile) = stream(file.io)
 
 Base.bswap(x::Rational{T}) where {T} = Rational(bswap(x.num), bswap(x.den))
 

@@ -16,6 +16,7 @@ using ProgressMeter
 using Base.Iterators
 using Inflate
 using UUIDs
+using Mmap
 
 const PKGVERSION = @PkgVersion.Version 0
 
@@ -28,7 +29,8 @@ include("ifds.jl")
 include("layout.jl")
 include(joinpath("types", "common.jl"))
 include(joinpath("types", "dense.jl"))
-include(joinpath("types", "mmap.jl"))
+include(joinpath("types", "lazy.jl"))
+include(joinpath("types", "mmapped.jl"))
 include("load.jl")
 
 export memmap

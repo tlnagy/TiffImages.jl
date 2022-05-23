@@ -1,9 +1,11 @@
-@testset "Extant File mmap" begin
+@testset "Extant File lazyio" begin
     filepath = get_example("julia.tif")
-    img = TiffImages.load(filepath, mmap=true)
+    img = TiffImages.load(filepath, lazyio=true)
     @test size(img) == (300, 500, 1)
     @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
-    # force close the stream behind the file to see if it's properly reopened 
+    c = img[70,65]   # in the blue dot
+    @test blue(c) > max(red(c), green(c))
+    # force close the stream behind the file to see if it's properly reopened
     close(img.data.file.io)
     @test all(img[3, 1:50] .== RGB{N0f8}(1, 1, 1))
 
@@ -11,6 +13,34 @@
     img_cvt = convert(Array{eltype(img), ndims(img)}, img)
     @test img_cvt == img.data
     @test img_cvt !== img.data
+end
+
+@testset "Extant File mmap" begin
+    filepath = get_example("flagler.tif")
+    img = TiffImages.load(filepath, mmap=true)
+    @test eltype(img) === RGBA{N0f8}
+    @test size(img) === (200, 541)
+    c = img[34, 105]
+    @test green(c) > blue(c) > red(c)
+    @test alpha(c) == 1
+    c = img[61, 218]
+    @test red(c) > blue(c) > green(c)
+    @test_throws BoundsError img[201, 541]
+    @test_throws BoundsError img[200, 542]
+    @test img[200,541] isa RGBA{N0f8}
+    imgeager = TiffImages.load(filepath)
+    @test img == imgeager
+
+    # Test that attempting to write the mmapped version throws an error,
+    # unless we open with write permissions
+    imgeager[61, 218] = zero(c)
+    @test imgeager[61, 218] === zero(c)
+    @test_throws ReadOnlyMemoryError img[61, 218] = zero(c)
+    img = TiffImages.load(filepath, mmap=true, mode="r+")
+    img[61, 218] = zero(c)
+    @test img[61, 218] === zero(c)
+    # Put the file back
+    img[61, 218] = c
 end
 
 @testset "De novo construction" begin
@@ -27,7 +57,7 @@ end
     @test TiffImages.offset(img) == UInt32
 
     @test_throws AssertionError push!(img, rand(Gray{N0f8}, 99, 99)) # wrong size
-    
+
     @testset "BigTIFF" begin
         rm("test.btif", force = true)
         img = memmap(Gray{N0f8}, "test.btif"; bigtiff = true)
