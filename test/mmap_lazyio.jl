@@ -41,6 +41,21 @@ end
     @test img[61, 218] === zero(c)
     # Put the file back
     img[61, 218] = c
+
+    # 3d
+    img0 = rand(Gray{N0f16}, 1000, 1000, 40)
+    filepath = tempname() * ".tif"
+    TiffImages.save("/tmp/stack.tif", img0);
+    img1 = TiffImages.load("/tmp/stack.tif");
+    img2 = TiffImages.load("/tmp/stack.tif"; mmap=true);
+    img3 = TiffImages.load("/tmp/stack.tif"; lazyio=true);
+    @test size(img1) == size(img2) == size(img3) == size(img0)
+    @test img1[1,2,3] == img2[1,2,3] == img3[1,2,3] == img0[1,2,3]
+    c = img0[1,2,3]
+    img1[1,2,3] = complement(c)
+    @test img1[1,2,3] == complement(c)
+    @test_throws ReadOnlyMemoryError img2[1,2,3] = complement(c)
+    @test_throws ErrorException img3[1,2,3] = complement(c)
 end
 
 @testset "De novo construction" begin

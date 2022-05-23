@@ -188,7 +188,7 @@ end
     end
 end
 
-@testset "Mmap" begin
+@testset "Mmap & lazyio" begin
     include("mmap_lazyio.jl")
 end
 
