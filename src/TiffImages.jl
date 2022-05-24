@@ -47,6 +47,14 @@ mktemp() do fpath, _
             TiffImages.load(fpath; lazyio=true)
         end
     end
+    # On Windows, trying to delete a file before garbage-collecting
+    # its corresponding mmapped-array results in an error.
+    # Here, this manifests as an error in precompiling the package,
+    # which is quite a serious problem.
+    # Thus try hard to make sure we free all the temporaries.
+    GC.gc()
+    GC.gc()
+    GC.gc()
 end
 
 end # module
