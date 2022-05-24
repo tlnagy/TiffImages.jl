@@ -25,7 +25,7 @@ makedocs(
         "Examples" => [
             "Reading TIFFs" => joinpath("examples", "reading.md"),
             "Writing TIFFs" => joinpath("examples", "writing.md"),
-            "Memory-mapping TIFFs" => joinpath("examples", "mmap.md")
+            "Lazy TIFFs" => joinpath("examples", "mmap_lazyio.md")
         ],
         "Library" => [
             "Public" => joinpath("lib", "public.md"),

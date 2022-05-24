@@ -5,7 +5,7 @@ Loads a TIFF image. Optional flags `verbose` and `mmap` are set to true and
 false by default, respectively. Setting the former to false will hide the
 loading bar, while setting the later to true will memory-mapped the image.
 
-See [Memory-mapping TIFFs](@ref) for more details about memory-mapping
+See [Lazy TIFFs](@ref) for more details about memory-mapping and lazy I/O.
 """
 function load(filepath::String; mode = "r", kwargs...)
     open(filepath, mode) do io
@@ -25,10 +25,10 @@ function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
     end
 
     ifd = first(ifds)
-    if mmap && iscontiguous(ifd)
+    if mmap && iscontiguous(ifd) && getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE) === COMPRESSION_NONE
         return MmappedTIFF(tf, ifds)
     elseif lazyio || mmap
-        mmap && @warn "Discontiguous planes are not supported by `mmap`, use `lazyio = true` instead" maxlog=1
+        mmap && @warn "Compression and discontiguous planes are not supported by `mmap`, use `lazyio = true` instead" maxlog=1
         loaded = DiskTaggedImage(tf, ifds)
     else
         if nplanes == 1

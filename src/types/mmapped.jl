@@ -20,11 +20,7 @@ function MmappedTIFF{T,N}(file::TiffFile{O}, ifds::Vector{IFD{O}}) where {T, N, 
     end
     ifd = first(ifds)
     sz = (nrows(ifd), ncols(ifd))
-    compression = COMPRESSION_NONE
-    try
-        compression = CompressionType(ifd[COMPRESSION].data)
-    catch
-    end
+    compression = getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE)
     compression == COMPRESSION_NONE || error("mmap is not yet supported with compression")
     all(iscontiguous, ifds) || error("non-contiguous TIFFs are not yet supported by mmap")
 
