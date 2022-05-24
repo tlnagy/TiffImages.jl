@@ -52,9 +52,12 @@ mktemp() do fpath, _
     # Here, this manifests as an error in precompiling the package,
     # which is quite a serious problem.
     # Thus try hard to make sure we free all the temporaries.
-    GC.gc()
-    GC.gc()
-    GC.gc()
+    if Sys.iswindows()
+        GC.gc()
+        GC.gc()
+        GC.gc()
+        sleep(0.1)
+    end
 end
 
 end # module
