@@ -53,7 +53,7 @@ img[:, :, 2]
 
 # #### Lazy operations
 
-# One of the primary benefits of lazy-loading avoids unnecessary work for
+# One of the primary benefits of lazy-loading is avoiding unnecessary work for
 # portions of the image that may never be accessed.
 # I recommend using `MappedArrays` to continue the "laziness" of operations.
 
