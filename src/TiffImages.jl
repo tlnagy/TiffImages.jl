@@ -42,22 +42,16 @@ mktemp() do fpath, _
     for t in Any[N0f8, N0f16, Float32, Float64]
         for c in Any[Gray, GrayA, RGB, RGBA], sz in ((2, 2), (2, 2, 2))
             TiffImages.save(fpath, rand(c{t}, sz))
-            Sys.iswindows() && GC.gc()
             TiffImages.load(fpath)
-            TiffImages.load(fpath; mmap=true)
-            TiffImages.load(fpath; lazyio=true)
+            let img = TiffImages.load(fpath; mmap=true) end
+            let img = TiffImages.load(fpath; lazyio=true) end
+            # On Windows, trying to delete a file before garbage-collecting
+            # its corresponding mmapped-array results in an error.
+            # Here, this manifests as an error in precompiling the package,
+            # which is quite a serious problem.
+            # Thus try hard to make sure we free all the temporaries.
+            Sys.iswindows() && GC.gc()
         end
-    end
-    # On Windows, trying to delete a file before garbage-collecting
-    # its corresponding mmapped-array results in an error.
-    # Here, this manifests as an error in precompiling the package,
-    # which is quite a serious problem.
-    # Thus try hard to make sure we free all the temporaries.
-    if Sys.iswindows()
-        GC.gc()
-        GC.gc()
-        GC.gc()
-        sleep(0.1)
     end
 end
 

@@ -17,61 +17,56 @@ end
 
 @testset "Extant File mmap" begin
     filepath = get_example("flagler.tif")
-    img = TiffImages.load(filepath, mmap=true)
-    @test eltype(img) === RGBA{N0f8}
-    @test size(img) === (200, 541)
-    c = img[34, 105]
-    @test green(c) > blue(c) > red(c)
-    @test alpha(c) == 1
-    c = img[61, 218]
-    @test red(c) > blue(c) > green(c)
-    @test_throws BoundsError img[201, 541]
-    @test_throws BoundsError img[200, 542]
-    @test img[200,541] isa RGBA{N0f8}
-    imgeager = TiffImages.load(filepath)
-    @test img == imgeager
+    let img = TiffImages.load(filepath, mmap=true)
+        @test eltype(img) === RGBA{N0f8}
+        @test size(img) === (200, 541)
+        c = img[34, 105]
+        @test green(c) > blue(c) > red(c)
+        @test alpha(c) == 1
+        c = img[61, 218]
+        @test red(c) > blue(c) > green(c)
+        @test_throws BoundsError img[201, 541]
+        @test_throws BoundsError img[200, 542]
+        @test img[200,541] isa RGBA{N0f8}
+        imgeager = TiffImages.load(filepath)
+        @test img == imgeager
 
-    # Test that attempting to write the mmapped version throws an error,
-    # unless we open with write permissions
-    imgeager[61, 218] = zero(c)
-    @test imgeager[61, 218] === zero(c)
-    @test_throws ReadOnlyMemoryError img[61, 218] = zero(c)
-    img = TiffImages.load(filepath, mmap=true, mode="r+")
-    img[61, 218] = zero(c)
-    @test img[61, 218] === zero(c)
-    # Put the file back
-    img[61, 218] = c
+        # Test that attempting to write the mmapped version throws an error,
+        # unless we open with write permissions
+        imgeager[61, 218] = zero(c)
+        @test imgeager[61, 218] === zero(c)
+        @test_throws ReadOnlyMemoryError img[61, 218] = zero(c)
+
+        img = TiffImages.load(filepath, mmap=true, mode="r+")
+        img[61, 218] = zero(c)
+        @test img[61, 218] === zero(c)
+        # Put the file back
+        img[61, 218] = c
+    end
 
     # 3d
     img0 = rand(Gray{N0f16}, 1000, 1000, 40)
     filepath = tempname() * ".tif"
-    TiffImages.save(filepath, img0);
+    TiffImages.save(filepath, img0)
     img1 = TiffImages.load(filepath);
-    img2 = TiffImages.load(filepath; mmap=true);
-    img3 = TiffImages.load(filepath; lazyio=true);
-    @test size(img1) == size(img2) == size(img3) == size(img0)
-    @test img1[1,2,3] == img2[1,2,3] == img3[1,2,3] == img0[1,2,3]
-    c = img0[1,2,3]
-    img1[1,2,3] = complement(c)
-    @test img1[1,2,3] == complement(c)
-    @test_throws ReadOnlyMemoryError img2[1,2,3] = complement(c)
-    @test_throws ErrorException img3[1,2,3] = complement(c)
+    let img2 = TiffImages.load(filepath; mmap=true), img3 = TiffImages.load(filepath; lazyio=true)
+        @test size(img1) == size(img2) == size(img3) == size(img0)
+        @test img1[1,2,3] == img2[1,2,3] == img3[1,2,3] == img0[1,2,3]
+        c = img0[1,2,3]
+        img1[1,2,3] = complement(c)
+        @test img1[1,2,3] == complement(c)
+        @test_throws ReadOnlyMemoryError img2[1,2,3] = complement(c)
+        @test_throws ErrorException img3[1,2,3] = complement(c)
+    end
 
     # with N0f8 (a special case for sizing slice buffers)
     img0 = Gray{N0f8}[0.2 0.4;
                       0   1]
     filepath2 = tempname() * ".tif"
     TiffImages.save(filepath2, img0)
-    img = TiffImages.load(filepath2; mmap=true)
-    @test img == img0
-
-    if Sys.iswindows()  # Windows requires GC-before-delete
-        img1 = img2 = img3 = img0 = nothing
-        GC.gc()
-        sleep(0.1)
+    let img = TiffImages.load(filepath2; mmap=true)
+        @test img == img0
     end
-    rm(filepath)
-    rm(filepath2)
 end
 
 @testset "De novo construction" begin
