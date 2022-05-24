@@ -60,9 +60,18 @@ end
     # with N0f8 (a special case for sizing slice buffers)
     img0 = Gray{N0f8}[0.2 0.4;
                       0   1]
-    TiffImages.save(filepath, img0)
-    img = TiffImages.load(filepath; mmap=true)
+    filepath2 = tempname() * ".tif"
+    TiffImages.save(filepath2, img0)
+    img = TiffImages.load(filepath2; mmap=true)
     @test img == img0
+
+    if Sys.iswindows()  # Windows requires GC-before-delete
+        img1 = img2 = img3 = img0 = nothing
+        GC.gc()
+        sleep(0.1)
+    end
+    rm(filepath)
+    rm(filepath2)
 end
 
 @testset "De novo construction" begin
