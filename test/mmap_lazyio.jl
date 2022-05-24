@@ -44,7 +44,7 @@ end
 
     # 3d
     img0 = rand(Gray{N0f16}, 1000, 1000, 40)
-    filepath = tempname() * ".tif"
+    filepath = splitext(tempname())[1] * ".tif"
     TiffImages.save(filepath, img0);
     img1 = TiffImages.load(filepath);
     img2 = TiffImages.load(filepath; mmap=true);
