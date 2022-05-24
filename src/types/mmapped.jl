@@ -51,6 +51,9 @@ function getchunk(::Type{T}, raw::Vector{UInt8}, sz::Dims{2}, ifd::IFD) where T
     rawsz = sizeof(T) * prod(sz)
     strip_offsets = ifd[STRIPOFFSETS].data
     o = strip_offsets[1]::Core.BuiltinInts
+    if sizeof(T) == 1
+        return reinterpret(reshape, T, reshape(view(raw, o+1:o+rawsz), sz...))
+    end
     return reinterpret(reshape, T, reshape(view(raw, o+1:o+rawsz), sizeof(T), sz...))
 end
 

@@ -56,6 +56,13 @@ end
     @test img1[1,2,3] == complement(c)
     @test_throws ReadOnlyMemoryError img2[1,2,3] = complement(c)
     @test_throws ErrorException img3[1,2,3] = complement(c)
+
+    # with N0f8 (a special case for sizing slice buffers)
+    img0 = Gray{N0f8}[0.2 0.4;
+                      0   1]
+    TiffImages.save(filepath, img0)
+    img = TiffImages.load(filepath; mmap=true)
+    @test img == img0
 end
 
 @testset "De novo construction" begin

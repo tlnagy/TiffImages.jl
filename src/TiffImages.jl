@@ -39,10 +39,12 @@ export memmap
 
 ## Precompilation helper
 mktemp() do fpath, _
-    for t in [N0f8, N0f16, Float32, Float64]
-        for c in [Gray, GrayA, RGB, RGBA]
-            TiffImages.save(fpath, rand(c{t}, 2, 2))
+    for t in Any[N0f8, N0f16, Float32, Float64]
+        for c in Any[Gray, GrayA, RGB, RGBA], sz in ((2, 2), (2, 2, 2))
+            TiffImages.save(fpath, rand(c{t}, sz))
             TiffImages.load(fpath)
+            TiffImages.load(fpath; mmap=true)
+            TiffImages.load(fpath; lazyio=true)
         end
     end
 end
