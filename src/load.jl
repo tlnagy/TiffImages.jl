@@ -1,9 +1,10 @@
 """
     $(SIGNATURES)
 
-Loads a TIFF image. Optional flags `verbose` and `mmap` are set to true and
-false by default, respectively. Setting the former to false will hide the
-loading bar, while setting the later to true will memory-mapped the image.
+Loads a TIFF image. Optional flags `verbose`, `lazyio`, and `mmap` are set to
+true, false, and false by default, respectively. Setting `verbose` to false
+will hide the loading bar, while setting either `lazyio` or `mmap` to true
+defer loading until the data are needed (by either of two mechanisms).
 
 See [Lazy TIFFs](@ref) for more details about memory-mapping and lazy I/O.
 """
