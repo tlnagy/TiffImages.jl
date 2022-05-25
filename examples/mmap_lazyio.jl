@@ -43,7 +43,9 @@ img[:, :, 2]
 # However, for files that can be supported by `mmap=true`, you can set values
 # as long as you load the image with
 
-#img = TiffImages.load(filepath; mmap=true, mode="r+")
+# ```julia
+# img = TiffImages.load(filepath; mmap=true, mode="r+")
+# ```
 
 # !!! warning
 #     Setting values in the array writes those same values to disk!

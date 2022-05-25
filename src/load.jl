@@ -28,7 +28,7 @@ function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
     if mmap && iscontiguous(ifd) && getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE) === COMPRESSION_NONE
         return MmappedTIFF(tf, ifds)
     elseif lazyio || mmap
-        mmap && @warn "Compression and discontiguous planes are not supported by `mmap`, use `lazyio = true` instead" maxlog=1
+        mmap && @warn "Compression and discontiguous planes are not supported by `mmap`, use `lazyio = true` instead"
         loaded = DiskTaggedImage(tf, ifds)
     else
         if nplanes == 1
