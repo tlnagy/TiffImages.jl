@@ -191,6 +191,24 @@ getstream(fmt, io::IOStream) = getstream(fmt, io, extract_filename(io))
 # assume OMETIFF if no format given
 getstream(io) = getstream(format"TIFF", io)
 
+@static if Sys.iswindows()
+    # Be permissive on windows with eager GC to work around
+    # https://github.com/tlnagy/TiffImages.jl/pull/79#discussion_r880478304
+    function _safe_open(f, filepath::String, mode="r", args...; kwargs...)
+        GC.gc()
+        try
+            open(f, filepath, mode, args...; kwargs...)
+        catch err
+            if err isa SystemError
+                @warn "failed to open file \"$filepath\" in \"$mode\" mode, this may be caused by overwriting a file previously opened with mmap"
+            end
+            rethrow()
+        end
+    end
+else
+    const _safe_open = open
+end
+
 if VERSION >= v"1.4"
     _read!(s::IO, a::AbstractArray) = read!(s, a)
 elseif VERSION >= v"1.3"

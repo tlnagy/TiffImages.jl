@@ -161,7 +161,7 @@ end
 save(io::IO, data::DenseTaggedImage) where {IO <: Union{IOStream, Stream}} = write(io, data)
 save(io::IO, data) where {IO <: Union{IOStream, Stream}} = save(io, DenseTaggedImage(data))
 function save(filepath::String, data)
-    open(filepath, "w") do io
+    _safe_open(filepath, "w") do io
         save(getstream(format"TIFF", io, filepath), data)
     end
     nothing

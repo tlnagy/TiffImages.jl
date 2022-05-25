@@ -9,7 +9,7 @@ defer loading until the data are needed (by either of two mechanisms).
 See [Lazy TIFFs](@ref) for more details about memory-mapping and lazy I/O.
 """
 function load(filepath::String; mode = "r", kwargs...)
-    open(filepath, mode) do io
+    _safe_open(filepath, mode) do io
         load(io; kwargs...)
     end
 end
