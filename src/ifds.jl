@@ -4,7 +4,7 @@
 An image file directory is a sorted collection of the tags representing this
 plane in the TIFF file. They behave like dictionaries except that tags aren't
 required to be unique, so given an IFD called `ifd`, we can add new tags as
-follows: 
+follows:
 
 ```jldoctest; setup = :(ifd = TiffImages.IFD(UInt32))
 julia> ifd[TiffImages.IMAGEDESCRIPTION] = "Some details";
@@ -47,7 +47,7 @@ julia> ifd[Iterable(TiffImages.IMAGEDESCRIPTION)] = "test2" # since wrapped with
 "test2"
 
 julia> ifd
-IFD, with tags: 
+IFD, with tags:
 	Tag(IMAGEDESCRIPTION, "test")
 	Tag(IMAGEDESCRIPTION, "test2")
 
@@ -67,6 +67,14 @@ Base.getindex(ifd::IFD, key::Iterable{TiffTag}) = getindex(ifd, Iterable(UInt16(
 Base.getindex(ifd::IFD, key::Iterable{UInt16}) = getindex(ifd.tags, key.key)
 Base.getindex(ifd::IFD, key::TiffTag) = getindex(ifd, UInt16(key))
 Base.getindex(ifd::IFD, key::UInt16) = first(getindex(ifd.tags, key))
+
+getdata(f::F, ifd::IFD, key::TiffTag, default) where F = getdata(f, ifd, UInt16(key), default)
+function getdata(f::F, ifd::IFD, key::UInt16, default) where F
+    val = get(ifd.tags, key, nothing)
+    val === nothing && return default
+    return f(first(val).data)
+end
+getdata(ifd::IFD, key, default) = getdata(identity, ifd, key, default)
 
 Base.in(key::TiffTag, v::IFD) = in(UInt16(key), v)
 Base.in(key::UInt16, v::IFD) = in(key, keys(v))
@@ -205,11 +213,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
 
     rows = nrows(ifd)
     cols = ncols(ifd)
-    compression = COMPRESSION_NONE
-    try 
-        compression = CompressionType(ifd[COMPRESSION].data)
-    catch
-    end
+    compression = getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE)
 
     if !iscontiguous(ifd) || compression != COMPRESSION_NONE
         rowsperstrip = rows

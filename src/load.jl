@@ -1,20 +1,21 @@
 """
     $(SIGNATURES)
 
-Loads a TIFF image. Optional flags `verbose` and `mmap` are set to true and
-false by default, respectively. Setting the former to false will hide the
-loading bar, while setting the later to true will memory-mapped the image.
+Loads a TIFF image. Optional flags `verbose`, `lazyio`, and `mmap` are set to
+true, false, and false by default, respectively. Setting `verbose` to false
+will hide the loading bar, while setting either `lazyio` or `mmap` to true
+defer loading until the data are needed (by either of two mechanisms).
 
-See [Memory-mapping TIFFs](@ref) for more details about memory-mapping
+See [Lazy TIFFs](@ref) for more details about memory-mapping and lazy I/O.
 """
-function load(filepath::String; verbose=true, mmap = false)
-    open(filepath) do io
-        load(io; verbose=verbose, mmap=mmap)
+function load(filepath::String; mode = "r", kwargs...)
+    _safe_open(filepath, mode) do io
+        load(io; kwargs...)
     end
 end
 
-load(io::IOStream; verbose=true, mmap = false) = load(read(io, TiffFile); verbose=verbose, mmap=mmap)
-function load(tf::TiffFile; verbose=true, mmap = false)
+load(io::IOStream; kwargs...) = load(read(io, TiffFile); kwargs...)
+function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
     ifds = IFD{offset(tf)}[]
 
     nplanes = 0
@@ -24,8 +25,12 @@ function load(tf::TiffFile; verbose=true, mmap = false)
         nplanes += 1
     end
 
-    if mmap
-        loaded = DiskTaggedImage(tf, ifds)
+    ifd = first(ifds)
+    if mmap && iscontiguous(ifd) && getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE) === COMPRESSION_NONE
+        return MmappedTIFF(tf, ifds)
+    elseif lazyio || mmap
+        mmap && @warn "Compression and discontiguous planes are not supported by `mmap`, use `lazyio = true` instead"
+        loaded = LazyBufferedTIFF(tf, ifds)
     else
         if nplanes == 1
             loaded = load(tf, ifds, nothing; verbose=verbose)
@@ -44,7 +49,7 @@ end
 
 Wrap the raw eltype of an image with color if needed, e.g. for space efficient
 on-disk representations like palette-colored images and bitarrays. Otherwise,
-just return the passed image. 
+just return the passed image.
 """
 function fixcolors(loaded, ifd)
     if eltype(loaded) <: Palette

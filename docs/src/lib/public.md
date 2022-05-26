@@ -11,5 +11,6 @@ memmap
 
 ```@docs
 TiffImages.DenseTaggedImage
-TiffImages.DiskTaggedImage
+TiffImages.LazyBufferedTIFF
+TiffImages.MmappedTIFF
 ```

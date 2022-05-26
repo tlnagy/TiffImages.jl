@@ -4,3 +4,5 @@ Manifest.toml
 /dev/
 docs/build/
 docs/src/examples/
+test/test.tif
+test/test.btif

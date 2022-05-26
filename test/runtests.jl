@@ -188,8 +188,8 @@ end
     end
 end
 
-@testset "Mmap" begin
-    include("mmap.jl")
+@testset "Mmap & lazyio" begin
+    include("mmap_lazyio.jl")
 end
 
 @testset "Writing" begin
