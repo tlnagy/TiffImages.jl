@@ -30,7 +30,7 @@ function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
         return MmappedTIFF(tf, ifds)
     elseif lazyio || mmap
         mmap && @warn "Compression and discontiguous planes are not supported by `mmap`, use `lazyio = true` instead"
-        loaded = DiskTaggedImage(tf, ifds)
+        loaded = LazyBufferedTIFF(tf, ifds)
     else
         if nplanes == 1
             loaded = load(tf, ifds, nothing; verbose=verbose)

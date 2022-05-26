@@ -1,6 +1,31 @@
+"""
+    $(TYPEDEF)
+
+A type to represent memory-mapped TIFF data, returned by `TiffImages.load(filepath; mmap=true)`.
+Useful for opening and operating on images too large to store in memory.
+
+This works by exploiting the operating system's memory-mapping capabilities. This is not compatible
+with certain TIFF options, including compression, but when applicable it gives good performance for
+most access (indexing) patterns.
+See discussion in the package documentation, and [`LazyBufferedTIFF`](@ref) for an alternative
+with different strengths and weaknesses.
+
+```
+julia> using TiffImages
+
+julia> img = TiffImages.load(filepath; mmap=true);
+
+julia> print(summary(img))
+200×541 TiffImages.MmappedTIFF{RGBA{N0f8}, 2}
+```
+
+Fields:
+
+$(FIELDS)
+"""
 struct MmappedTIFF{T <: Colorant, N, O <: Unsigned, A <: AbstractMatrix{T}} <: AbstractTIFF{T, N}
     """
-    2d slices in the file"
+    2d slices in the file
     """
     chunks::Vector{A}
     """
@@ -73,4 +98,12 @@ Base.@propagate_inbounds Base.setindex!(img::MmappedTIFF{T, 2}, val, i::Int, j::
 Base.@propagate_inbounds function Base.setindex!(img::MmappedTIFF{T, 3}, val, i::Int, j::Int, k::Int) where T
     chunk = img.chunks[k]
     chunk[j, i] = val
+end
+
+function Base.summary(io::IO, X::MmappedTIFF)
+    print(io, Base.dims2string(size(X)), " TiffImages.MmappedTIFF{$(eltype(X)), $(ndims(X))}")
+    n = length(X.chunks)
+    if n > 1
+        print(io, " with $(length(X.chunks)) slice planes")
+    end
 end
