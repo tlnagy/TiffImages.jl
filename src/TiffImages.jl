@@ -33,7 +33,7 @@ include(joinpath("types", "lazy.jl"))
 include(joinpath("types", "mmapped.jl"))
 include("load.jl")
 
-export memmap
+export memmap, LazyBufferedTIFF
 
 @deprecate TiffFile(::Type{O}) where O<:Unsigned TiffFile{O}()
 
