@@ -167,4 +167,4 @@ function save(filepath::String, data)
     nothing
 end
 
-Base.push!(A::DenseTaggedImage{T, N, O, AA}, data) where {T, N, O, AA} = error("push! is only supported for memory mapped images. See `memmap`.")
+Base.push!(A::DenseTaggedImage{T, N, O, AA}, data) where {T, N, O, AA} = error("push! is only supported for memory mapped images. See `LazyBufferedTIFF`.")

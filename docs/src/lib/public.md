@@ -4,7 +4,6 @@
 
 ```@docs
 TiffImages.load
-memmap
 ```
 
 ### Output Types

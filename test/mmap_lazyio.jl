@@ -71,7 +71,7 @@ end
 
 @testset "De novo construction" begin
     rm("test.tif", force = true)
-    img = memmap(Gray{N0f8}, "test.tif")
+    img = empty(LazyBufferedTIFF, Gray{N0f8}, "test.tif")
 
     # a newly initialized file should have every dimension equal to zero and
     # error if accessed
@@ -86,7 +86,7 @@ end
 
     @testset "BigTIFF" begin
         rm("test.btif", force = true)
-        img = memmap(Gray{N0f8}, "test.btif"; bigtiff = true)
+        img = empty(LazyBufferedTIFF, Gray{N0f8}, "test.btif"; bigtiff = true)
 
         push!(img, rand(Gray{N0f8}, 100, 100))
         @test size(img) == (100, 100, 1)

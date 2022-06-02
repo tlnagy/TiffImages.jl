@@ -165,13 +165,14 @@ GC.gc()
 # ### Incremental writing
 
 # `TiffImages` also supports writing to a file via an append
-# operation. As with most arrays, you need to provide an element type and a
-# filepath, but we'll use the [`memmap`](@ref) function in place of `load`
+# operation. We have a special type for this called 
+# [`LazyBufferedTIFF`](@ref), that we can create via the standard
+# `empty` function
 
 using TiffImages #hide
 #--------------
 using ImageCore # reexports Gray and N0f8
-img2 = memmap(Gray{N0f8}, "test.tif")
+img2 = empty(LazyBufferedTIFF, Gray{N0f8}, "test.tif")
 
 # !!! note
 #     For data-integrity reasons, `TiffImages` will not allow you to append to
@@ -207,4 +208,4 @@ img2[:, :, 2]
 # helpful to set the `bigtiff` flag to true so that `TiffImages` can use 64-bit
 # offsets. You'll see that the addressable space sky rockets:
 
-img3 = memmap(Gray{N0f16}, "test.btif"; bigtiff=true)
+img3 = empty(LazyBufferedTIFF, Gray{N0f16}, "test.btif"; bigtiff=true)

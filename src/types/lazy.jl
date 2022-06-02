@@ -13,7 +13,7 @@ with different strengths and weaknesses.
 ```jldoctest
 julia> using TiffImages, ColorTypes
 
-julia> img = TiffImages.memmap(Gray{Float32}, joinpath(mktempdir(), "test.tif"))
+julia> img = empty(LazyBufferedTIFF, Gray{Float32}, joinpath(mktempdir(), "test.tif"))
 32-bit LazyBufferedTIFF{Gray{Float32}} 0×0×0 (writable)
     Current file size on disk:   8 bytes
     Addressable space remaining: 4.000 GiB
@@ -67,7 +67,7 @@ function LazyBufferedTIFF(file::TiffFile{O}, ifds::Vector{IFD{O}}) where {O}
 end
 
 """
-    memmap(T, filepath; bigtiff)
+    empty(LazyBufferedTIFF, T, filepath; bigtiff)
 
 Create a new memory-mapped file ready with element type `T` for appending future
 slices. The `bigtiff` flag, if true, allows 64-bit offsets for data larger than
@@ -76,7 +76,7 @@ slices. The `bigtiff` flag, if true, allows 64-bit offsets for data larger than
 ```jldoctest; setup=:(rm("test.tif", force=true))
 julia> using ColorTypes, FixedPointNumbers # for Gray{N0f8} type
 
-julia> img = memmap(Gray{N0f8}, "test.tif"); # make memory-mapped image
+julia> img = empty(LazyBufferedTIFF, Gray{N0f8}, "test.tif"); # make memory-mapped image
 
 julia> push!(img, rand(Gray{N0f8}, 100, 100));
 
@@ -86,11 +86,16 @@ julia> size(img)
 (100, 100, 2)
 ```
 """
-function memmap(::Type{T}, filepath; bigtiff=false) where {T <: Colorant}
+function Base.empty(::Type{LazyBufferedTIFF}, ::Type{T}, filepath; bigtiff=false) where {T <: Colorant}
     if isfile(filepath)
         error("This file already exists, please use `TiffImages.load` to open")
     end
     LazyBufferedTIFF(T, getstream(format"TIFF", open(filepath, "w+"), filepath); bigtiff = bigtiff)
+end
+
+function memmap(t::Type{T}, filepath; bigtiff=false) where {T <: Colorant}
+    Base.depwarn("`memmap` is deprecated, please use empty(LazyBufferedTIFF, $t, $filepath; bigtiff = $bigtiff)", :memmap, force = true)
+    empty(LazyBufferedTIFF, t, filepath; bigtiff = bigtiff)
 end
 
 function LazyBufferedTIFF(::Type{T}, io::Stream; bigtiff = false) where {T}
