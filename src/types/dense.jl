@@ -142,7 +142,7 @@ function _writeslice(pagecache, tf::TiffFile{O, S}, slice, ifd, prev_ifd_record)
     prev_ifd_record
 end
 
-function Base.write(io::Stream, img::DenseTaggedImage) where {T} 
+function Base.write(io::Stream, img::DenseTaggedImage)
     O = offset(img)
     tf = TiffFile{O}(io)
 
