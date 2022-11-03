@@ -16,7 +16,18 @@ filepath = get_example("mri.tif");                                              
 
 # Loading lazily is very similar to [Reading TIFFs](@ref), except with the addition of
 # the `mmap=true` *or* `lazyio=true` flag. The differences between the two will be
-# described shortly. First, let's look at a demonstration using `mri.tif` from the
+# described in the next section. 
+# !!! tip
+#     A good general rule is to preferentially use `mmap=true`. It will generally be
+#     faster and, perhaps even more importantly, will have much better worst-case 
+#     behavior. However, it's more limited in the types of TIFFs that are supported, 
+#     e.g. compressed and/or striped TIFFs are not supported. For those files, use
+#     `lazyio=true`, which is more flexible.
+#     
+#     See the [Caveats and important details](@ref) section for more details.
+#    
+
+# First, let's look at a demonstration using `mri.tif` from the
 # [`tlnagy/exampletiffs`](https://github.com/tlnagy/exampletiffs) repo.
 
 using TiffImages
