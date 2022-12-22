@@ -206,3 +206,13 @@ end
     # test that the constructor can handle small images using 64bit offsets 
     @test size(TiffImages.DenseTaggedImage(rawarray, ifds)) == size(rawarray)
 end
+
+@testset "Issue #96" begin
+    # Handle TIFFs where multiple slices are stored in the same strip. These are
+    # still contiguous since the entire slice is within one strip.
+    ifd = TiffImages.IFD(UInt32)
+    ifd[TiffImages.IMAGELENGTH] = 16
+    ifd[TiffImages.ROWSPERSTRIP] = 256
+
+    @test TiffImages.iscontiguous(ifd)
+end
