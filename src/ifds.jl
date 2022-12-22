@@ -128,7 +128,7 @@ Checks if the data in this IFD is contiguous on disk. Striped data can be read
 faster as one contiguous chunk if possible.
 """
 function iscontiguous(ifd::IFD)
-    if !(ROWSPERSTRIP in ifd) || nrows(ifd) == ifd[ROWSPERSTRIP].data
+    if !(ROWSPERSTRIP in ifd) || nrows(ifd) <= ifd[ROWSPERSTRIP].data
         return true
     else
         return all(diff(ifd[STRIPOFFSETS].data) .== ifd[STRIPBYTECOUNTS].data[1:end-1])
