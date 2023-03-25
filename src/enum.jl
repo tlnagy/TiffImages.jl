@@ -315,6 +315,9 @@ $(FIELDS)
 #define TIFFTAG_ASSHOTPREPROFILEMATRIX	50832	/* map cameras's color space
 	CURRENTICCPROFILE = 50833 			 #  &
 	CURRENTPREPROFILEMATRIX = 50834 			 #  &
+	IMAGEJ_METADATA_BYTECOUNTS = 50838		# Embedded IMAGEJ metadata
+	IMAGEJ_METADATA = 50839
+	
 # tag 65535 is an undefined tag used by Eastman Kodak
 	DCSHUESHIFTVALUES = 65535 			 #  hue shift correction data
 
