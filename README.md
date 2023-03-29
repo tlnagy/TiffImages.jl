@@ -1,5 +1,7 @@
 # 💎 TiffImages.jl
 
+_"Don't get into a tiff with your images"_
+
 | **Stable release** | **Documentation**                 | **Build Status**                                              |
 |:------------------------------------------------------|:-------------------------------------------------------------------------|:--------------------------------------------------------------|
 | ![](https://juliahub.com/docs/TiffImages/version.svg) | [![][docs-stable-img]][docs-stable-url][![][docs-dev-img]][docs-dev-url] | [![][status-img]][status-url] [![][ci-img]][ci-url] [![][codecov-img]][codecov-url] |
