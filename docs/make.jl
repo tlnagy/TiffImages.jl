@@ -15,7 +15,10 @@ end
 DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
 makedocs(
     format = Documenter.HTML(
-        prettyurls = true,
+        prettyurls=get(ENV, "CI", "false") == "true",
+        assets =[
+                asset("https://analytics.tamasnagy.com/js/script.js", class=:js, attributes=Dict(Symbol("data-domain") => "tamasnagy.com", :defer => ""))
+            ],
     ),
     modules=[TiffImages],
     sitename="TiffImages.jl",
