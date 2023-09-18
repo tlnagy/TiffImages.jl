@@ -13,5 +13,5 @@ using TiffImages, Markdown
 tags = instances(TiffImages.TiffTag)
 mapping = collect.(zip(Int.(tags), string.(tags)))
 insert!(mapping, 1, ["Tag ID", "Tag Description"])
-Markdown.Table(mapping, fill(:l, length(mapping)))
+Markdown.MD(Markdown.Table(mapping, fill(:l, length(mapping))))
 ```

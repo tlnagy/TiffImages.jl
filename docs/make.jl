@@ -23,6 +23,7 @@ makedocs(
     modules=[TiffImages],
     sitename="TiffImages.jl",
     authors="Tamas Nagy and contributors",
+    warnonly = true,
     pages = [
         "Home" => "index.md",
         "Examples" => [

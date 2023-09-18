@@ -1,4 +1,4 @@
-# 💎 TiffImages.jl
+<img src="https://raw.githubusercontent.com/tlnagy/TiffImages.jl/ff96b52c65ef09f31c342077d1e410ee5a65eaf9/docs/src/assets/fulllogo.svg" width="500">
 
 _"Don't get into a tiff with your images"_
 
