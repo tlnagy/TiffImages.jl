@@ -1,5 +1,42 @@
 using Base: @propagate_inbounds
 
+"""
+    $(TYPEDEF)
+
+The most common TIFF structure that associates an Image File Directory, aka
+[`TiffImages.IFD`](@ref), with each XY image slice.
+
+```jldoctest; setup = :(using TiffImages, ColorTypes)
+julia> img = TiffImages.DenseTaggedImage(Gray.(zeros(UInt8, 10, 10)));
+
+julia> size(img)
+(10, 10)
+
+julia> img.ifds
+1-element Vector{TiffImages.IFD{UInt32}}:
+ IFD, with tags:
+	Tag(IMAGEWIDTH, 10)
+	Tag(IMAGELENGTH, 10)
+	Tag(BITSPERSAMPLE, 8)
+	Tag(PHOTOMETRIC, 1)
+	Tag(SAMPLESPERPIXEL, 1)
+	Tag(SAMPLEFORMAT, 1)
+
+julia> first(img.ifds)[TiffImages.XRESOLUTION] = 0x00000014//0x00000064 # write custom data
+0x00000001//0x00000005
+
+julia> TiffImages.save(mktemp()[2], img); # write to temp file
+```
+
+!!! note
+    Currently, when writing custom info to tags, play attention to the types
+    expected by other TIFF engines. For example,
+    [`XRESOLUTION`](https://www.awaresystems.be/imaging/tiff/tifftags/xresolution.html)
+    above expects a `rational` by default, which is equivalent to the Julian
+    `Rational{UInt32}`
+
+See also [`TiffImages.load`](@ref) and [`TiffImages.save`](@ref)
+"""
 struct DenseTaggedImage{T, N, O <: Unsigned, AA <: AbstractArray} <: AbstractDenseTIFF{T, N}
     data::AA
     ifds::Vector{IFD{O}}
@@ -158,6 +195,13 @@ function Base.write(io::Stream, img::DenseTaggedImage)
     prev_ifd_record
 end
 
+"""
+    save(io, data)
+
+Write data to `io`, if data is a `DenseTaggedImage` then any custom tags are
+also written to the file, otherwise a minimal set of tags are added to make the
+data readable by other TIFF engines.
+"""
 save(io::IO, data::DenseTaggedImage) where {IO <: Union{IOStream, Stream}} = write(io, data)
 save(io::IO, data) where {IO <: Union{IOStream, Stream}} = save(io, DenseTaggedImage(data))
 function save(filepath::String, data)
