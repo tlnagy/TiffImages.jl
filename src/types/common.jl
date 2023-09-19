@@ -4,6 +4,26 @@ abstract type AbstractDenseTIFF{T, N} <: AbstractTIFF{T, N} end
 
 abstract type AbstractStridedTIFF{T, N} <: AbstractTIFF{T, N} end
 
+function Base.getproperty(img::T, sym::Symbol) where {T <: AbstractTIFF}
+    if sym === :ifds
+        Base.depwarn("Directly accessing the ifds property is deprecated" * 
+        " and will be removed in TiffImages v0.7.0+. Please use `ifds(img)` instead.",
+        :AbstractTIFF)
+    end
+    getfield(img, sym)
+end
+
+"""
+    ifds(img)
+
+Get the Image File Directories of `img`, see [`TiffImages.IFD`] for details.
+Returns a single IFD for a 2D TIFF. Otherwise, returns a list of IFDs with a
+length equal to the third dimension of a 3D TIFF.
+```
+"""
+ifds(img::I) where {I <: AbstractTIFF{T, 2} where {T}} = first(getfield(img, :ifds))
+ifds(img::I) where {I <: AbstractTIFF} = getfield(img, :ifds)
+
 interpretation(img::AbstractArray) = interpretation(eltype(img))
 interpretation(::Type{T}) where {T <: Gray} = PHOTOMETRIC_MINISBLACK
 interpretation(::Type{T}) where {T <: AbstractRGB} = PHOTOMETRIC_RGB

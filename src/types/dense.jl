@@ -12,9 +12,8 @@ julia> img = TiffImages.DenseTaggedImage(Gray.(zeros(UInt8, 10, 10)));
 julia> size(img)
 (10, 10)
 
-julia> img.ifds
-1-element Vector{TiffImages.IFD{UInt32}}:
- IFD, with tags:
+julia> ifds(img)
+IFD, with tags: 
 	Tag(IMAGEWIDTH, 10)
 	Tag(IMAGELENGTH, 10)
 	Tag(BITSPERSAMPLE, 8)
@@ -22,7 +21,7 @@ julia> img.ifds
 	Tag(SAMPLESPERPIXEL, 1)
 	Tag(SAMPLEFORMAT, 1)
 
-julia> first(img.ifds)[TiffImages.XRESOLUTION] = 0x00000014//0x00000064 # write custom data
+julia> ifds(img)[TiffImages.XRESOLUTION] = 0x00000014//0x00000064 # write custom data
 0x00000001//0x00000005
 
 julia> TiffImages.save(mktemp()[2], img); # write to temp file
@@ -68,7 +67,7 @@ Base.axes(t::DenseTaggedImage) = axes(t.data)
 @propagate_inbounds Base.getindex(img::DenseTaggedImage, i...) = getindex(img.data, i...)
 @propagate_inbounds Base.setindex!(img::DenseTaggedImage, i...) = setindex!(img.data, i...)
 @propagate_inbounds function Base.getindex(img::DenseTaggedImage{T, 3}, i::Colon, j::Colon, k) where {T}
-    DenseTaggedImage(getindex(img.data, i, j, k), img.ifds[k])
+    DenseTaggedImage(getindex(img.data, i, j, k), ifds(img)[k])
 end
 
 # Override the fallback convert to get better performance
@@ -179,7 +178,7 @@ function _writeslice(pagecache, tf::TiffFile{O, S}, slice, ifd, prev_ifd_record)
     prev_ifd_record
 end
 
-function Base.write(io::Stream, img::DenseTaggedImage)
+function Base.write(io::Stream, img::I) where {I <: DenseTaggedImage{T, N}} where {T, N}
     O = offset(img)
     tf = TiffFile{O}(io)
 
@@ -187,8 +186,8 @@ function Base.write(io::Stream, img::DenseTaggedImage)
 
     pagecache = Vector{UInt8}(undef, size(img.data, 2) * sizeof(eltype(img.data)) * size(img.data, 1))
 
-    # For offseted arrays, `axes(img, 3) == 1:length(img.ifds)` does not hold in general
-    for (idx, ifd) in zip(axes(img, 3), img.ifds)
+    # For offseted arrays, `axes(img, 3) == 1:length(ifds(img))` does not hold in general
+    for (idx, ifd) in zip(axes(img, 3), N == 3 ? ifds(img) : [ifds(img)])
         prev_ifd_record = _writeslice(pagecache, tf, view(img, :, :, idx), ifd, prev_ifd_record)
     end
 

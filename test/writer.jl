@@ -189,5 +189,5 @@ end
     path, io = mktemp()
     write(io, img2)
     img3 = TiffImages.load(path)
-    @test occursin("test;", img3.ifds[1][TiffImages.SOFTWARE].data)
+    @test occursin("test;", ifds(img3)[TiffImages.SOFTWARE].data)
 end

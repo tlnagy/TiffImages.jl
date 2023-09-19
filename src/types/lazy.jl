@@ -119,7 +119,7 @@ function Base.getindex(A::LazyBufferedTIFF{T, O, AA}, i1::Int, i2::Int, i::Int) 
         return A.cache[i2, i1]
     end
 
-    ifd = A.ifds[i]
+    ifd = ifds(A)[i]
 
     # if the file isn't open, lets open a handle and update it
     if !isopen(A.file.io)
@@ -162,7 +162,7 @@ the file
 ```jldoctest; setup = :(using TiffImages, ColorTypes, FixedPointNumbers)
 julia> slice = TiffImages.DenseTaggedImage(Gray.(zeros(UInt8, 10, 10)));
 
-julia> first(slice.ifds)[TiffImages.IMAGEDESCRIPTION] = "Custom info";
+julia> ifds(slice)[TiffImages.IMAGEDESCRIPTION] = "Custom info";
 
 julia> temp_file = joinpath(mktempdir(), "tmp.tif");
 
@@ -172,7 +172,7 @@ julia> push!(lazy_tiff, slice);
 
 julia> close(lazy_tiff) # done writing, close open stream
 
-julia> first(TiffImages.load(temp_file).ifds)[TiffImages.IMAGEDESCRIPTION] # read from disk
+julia> ifds(TiffImages.load(temp_file))[TiffImages.IMAGEDESCRIPTION] # read from disk
 Tag(IMAGEDESCRIPTION, "Custom info")
 
 ```
@@ -182,7 +182,7 @@ function Base.push!(A::LazyBufferedTIFF{T, O, AA}, tiff::D) where {T, O, AA, D <
     data = tiff.data
 
     # merge a minimal IFD with the correct offset with any user provided tags
-    ifd = merge(_constructifd(data, offset(A.file)), tiff.ifds[1])
+    ifd = merge(_constructifd(data, offset(A.file)), ifds(tiff))
 
     if size(A) == (0, 0, 0) # if this is the initial slice pushed, initialize the size
         A.dims = (size(data)..., 0)
@@ -193,14 +193,14 @@ function Base.push!(A::LazyBufferedTIFF{T, O, AA}, tiff::D) where {T, O, AA, D <
     pagecache = Vector{UInt8}(undef, size(data, 2) * sizeof(T) * size(data, 1))
 
     if A.last_ifd_offset + sizeof(pagecache) + sizeof(ifd) > typemax(O)
-        @info "No more room in file @ N = $(length(A.ifds))"
+        @info "No more room in file @ N = $(length(ifds(A)))"
     end
     seekend(A.file.io)
     prev_ifd_slice = _writeslice(pagecache, A.file, data, ifd, A.last_ifd_offset)
 
     # update data
     A.dims = (A.dims[1], A.dims[2], A.dims[3] + 1)
-    push!(A.ifds, ifd)
+    push!(ifds(A), ifd)
     A.last_ifd_offset = prev_ifd_slice
     A.cache = data
     A.cache_index = A.dims[3]
@@ -220,7 +220,7 @@ function Base.show(io::IO, ::MIME"text/plain", A::LazyBufferedTIFF{T, O, AA}) wh
     end
     println(io)
     ondisk = sizeof(A.file)
-    ondisk += (size(A) == (0, 0, 0)) ? 0 : sum(sizeof.(A.ifds)) + sizeof(T) * reduce(*, size(A))
+    ondisk += (size(A) == (0, 0, 0)) ? 0 : sum(sizeof.(ifds(A))) + sizeof(T) * reduce(*, size(A))
     println(io, "    Current file size on disk:   $(Base.format_bytes(ondisk))")
     println(io, "    Addressable space remaining: $(Base.format_bytes(typemax(O) - ondisk))")
 end

@@ -61,8 +61,7 @@ dump(img; maxdepth=1)
 
 # Lets take a look at what tags there are:
 
-ifd = first(img.ifds) # since our data is 2D
-ifd
+ifd = ifds(img) # returns a single IFD since our data is 2D
 
 # ### Manipulating TIFF Tags
 #
@@ -145,7 +144,7 @@ img3 = TiffImages.DenseTaggedImage(colors)
 data = rand(-100:100, 5, 5)
 #--------------------------
 img4 = TiffImages.DenseTaggedImage(reinterpret(Gray{Q0f63}, data))
-println(img4.ifds[1])
+println(ifds(img4))
 
 # As you can see the `SAMPLEFORMATS` and `BITSPERSAMPLE` tags correctly updated
 # to show that this TIFF contains signed integers and 64-bit data, respectively.
