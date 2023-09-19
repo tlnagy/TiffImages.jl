@@ -4,6 +4,7 @@
 
 ```@docs
 TiffImages.load
+TiffImages.save
 ```
 
 ### Output Types
