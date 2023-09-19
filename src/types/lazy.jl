@@ -17,6 +17,8 @@ julia> img = empty(LazyBufferedTIFF, Gray{Float32}, joinpath(mktempdir(), "test.
 32-bit LazyBufferedTIFF{Gray{Float32}} 0×0×0 (writable)
     Current file size on disk:   8 bytes
     Addressable space remaining: 4.000 GiB
+
+julia> close(img) # when you're done, close the stream
 ```
 
 $(FIELDS)
@@ -145,7 +147,42 @@ Push a 2D slice to a memory-mapped file. The slice must be the same `eltype` as 
 target `img` and the `img` must be not be readonly.
 """
 function Base.push!(A::LazyBufferedTIFF{T, O, AA}, data::AbstractMatrix{T}) where {T, O, AA}
+    ifd = _constructifd(data, offset(A.file))
+
+    push!(A, DenseTaggedImage(data, ifd))
+end
+
+"""
+    push!(img::LazyBufferedTIFF, tiff)
+
+Push a 2D slice and associated IFD to a memory-mapped file. The slice must be
+the same `eltype` as the target `img`. This allows for writing custom tags to
+the file
+
+```jldoctest; setup = :(using TiffImages, ColorTypes, FixedPointNumbers)
+julia> slice = TiffImages.DenseTaggedImage(Gray.(zeros(UInt8, 10, 10)));
+
+julia> first(slice.ifds)[TiffImages.IMAGEDESCRIPTION] = "Custom info";
+
+julia> temp_file = joinpath(mktempdir(), "tmp.tif");
+
+julia> lazy_tiff = empty(LazyBufferedTIFF, Gray{N0f8}, temp_file; bigtiff = true);
+
+julia> push!(lazy_tiff, slice);
+
+julia> close(lazy_tiff) # done writing, close open stream
+
+julia> first(TiffImages.load(temp_file).ifds)[TiffImages.IMAGEDESCRIPTION] # read from disk
+Tag(IMAGEDESCRIPTION, "Custom info")
+
+```
+"""
+function Base.push!(A::LazyBufferedTIFF{T, O, AA}, tiff::D) where {T, O, AA, D <: AbstractTIFF{T, 2}}
     (A.readonly) && error("This image is read only")
+    data = tiff.data
+
+    # merge a minimal IFD with the correct offset with any user provided tags
+    ifd = merge(_constructifd(data, offset(A.file)), tiff.ifds[1])
 
     if size(A) == (0, 0, 0) # if this is the initial slice pushed, initialize the size
         A.dims = (size(data)..., 0)
@@ -153,7 +190,6 @@ function Base.push!(A::LazyBufferedTIFF{T, O, AA}, data::AbstractMatrix{T}) wher
 
     @assert size(data) == (A.dims[1], A.dims[2]) "Pushed slices must have dimensions: $((A.dims[1], A.dims[2]))"
 
-    ifd = _constructifd(data, offset(A.file))
     pagecache = Vector{UInt8}(undef, size(data, 2) * sizeof(T) * size(data, 1))
 
     if A.last_ifd_offset + sizeof(pagecache) + sizeof(ifd) > typemax(O)
@@ -188,3 +224,5 @@ function Base.show(io::IO, ::MIME"text/plain", A::LazyBufferedTIFF{T, O, AA}) wh
     println(io, "    Current file size on disk:   $(Base.format_bytes(ondisk))")
     println(io, "    Addressable space remaining: $(Base.format_bytes(typemax(O) - ondisk))")
 end
+
+Base.close(tiff::L) where {L <: LazyBufferedTIFF} = close(tiff.file.io)
