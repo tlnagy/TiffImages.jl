@@ -56,8 +56,8 @@ end
         @test red(img[92, 21, 2]) == 0.74118N0f16
 
         # make sure IFDs are included if whole slice is grabbed
-        @test length(img[:, :, 2].ifds) == 1
-        @test length(img[:, :, 2:5].ifds) == 4
+        @test typeof(ifds(img[:, :, 2])) <: TiffImages.IFD
+        @test length(ifds(img[:, :, 2:5])) == 4
 
         # make sure that subslicing in XY drops IFD info
         @test typeof(img[:, 50:60, 27]) == Array{RGB{Normed{UInt16,16}},2}
@@ -166,7 +166,7 @@ end
         img = TiffImages.load(filepath)
 
         # verify that strip offsets are correctly bswapped for endianness
-        img_stripoffsets = Int.(img.ifds[1][TiffImages.STRIPOFFSETS].data)
+        img_stripoffsets = Int.(ifds(img)[TiffImages.STRIPOFFSETS].data)
         @test img_stripoffsets == [8, 129848, 259688, 389528]
 
         # Efficient convert method
@@ -179,7 +179,7 @@ end
         img = TiffImages.load(filepath)
 
         # verify that strip offsets are correctly bswapped for endianness
-        img_stripoffsets = Int.(img.ifds[1][TiffImages.STRIPOFFSETS].data)
+        img_stripoffsets = Int.(ifds(img)[TiffImages.STRIPOFFSETS].data)
         @test issorted(img_stripoffsets)
 
         # Efficient convert method
