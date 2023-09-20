@@ -61,7 +61,8 @@ dump(img; maxdepth=1)
 
 # Lets take a look at what tags there are:
 
-ifd = ifds(img) # returns a single IFD since our data is 2D
+ifd = first(img.ifds) # since our data is 2D
+ifd
 
 # ### Manipulating TIFF Tags
 #
@@ -85,6 +86,38 @@ ifd
 #md # !!! warning
 #md #     Careful with `delete!`, if any of core tags are deleted, TiffImages.jl and
 #md #     other readers might fail to read the file
+
+# Among Tifftags, updating x and y resolution may be useful. First, we need to assign the resolution unit `RESOLUTIONUNIT`.
+
+using Images, TiffImages, Unitful
+img0 = zeros(Gray{N0f8}, 10,10,12) #example image
+img = TiffImages.DenseTaggedImage(img0)
+ifds = img.ifds
+
+resunit = UInt8(3) # 1: No absolute unit of measurement, 2: Inch, 3: Centimeter
+[ifd[TiffImages.RESOLUTIONUNIT] = resunit for ifd in ifds]
+
+# Then, tifftags `XRESOLUTION` and `YRESOLUTION` display the number of pixels per `RESOLUTIONUNIT`.
+
+resxy = Rational{UInt32}(round(1u"cm"/0.653u"μm", digits = 3)) # Type must be rational. In this example, the pixel size is 0.653 μm x 0.653 μm.
+[ifd[TiffImages.XRESOLUTION] = resxy for ifd in ifds]
+[ifd[TiffImages.YRESOLUTION] = resxy for ifd in ifds]
+
+# Additionally, we can update Z and time axes in `IMAGEDESCRIPTION`. Especially, if someone needs to open the image in ImageJ, to properly display all axis information in ImageJ, `IMAGEDSCRIPTION` can be written in the following way:
+
+ifds[1][TiffImages.IMAGEDESCRIPTION] = # only in the first IFD
+"ImageJ=1.51d
+images=12
+frames=3
+slices=4
+hyperstack=true
+spacing=5.0
+unit=um
+finterval=0.2
+axes=TZYX"
+
+#md # !!! note
+#md #     TIFF doesn't have a standard way of handling Z and T information.
 
 # ### Saving to disk
 #
@@ -144,7 +177,7 @@ img3 = TiffImages.DenseTaggedImage(colors)
 data = rand(-100:100, 5, 5)
 #--------------------------
 img4 = TiffImages.DenseTaggedImage(reinterpret(Gray{Q0f63}, data))
-println(ifds(img4))
+println(img4.ifds[1])
 
 # As you can see the `SAMPLEFORMATS` and `BITSPERSAMPLE` tags correctly updated
 # to show that this TIFF contains signed integers and 64-bit data, respectively.
