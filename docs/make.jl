@@ -1,4 +1,5 @@
 using Documenter
+using DemoCards
 using TiffImages
 
 using Literate
@@ -12,13 +13,17 @@ for ex in EXAMPLES
     Literate.markdown(ex, OUTPUT, documenter = true)
 end
 
+demopage, postprocess_cb, demo_assets = makedemos("demos") # this is the relative path to docs/
+assets = []
+isnothing(demo_assets) || (push!(assets, demo_assets))
+
 DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
 makedocs(
     format = Documenter.HTML(
         prettyurls=get(ENV, "CI", "false") == "true",
-        assets =[
+        assets =vcat([
                 asset("https://analytics.tamasnagy.com/js/script.js", class=:js, attributes=Dict(Symbol("data-domain") => "tamasnagy.com", :defer => ""))
-            ],
+            ], assets),
     ),
     modules=[TiffImages],
     sitename="TiffImages.jl",
@@ -31,6 +36,7 @@ makedocs(
             "Writing TIFFs" => joinpath("examples", "writing.md"),
             "Lazy TIFFs" => joinpath("examples", "mmap_lazyio.md")
         ],
+        demopage,
         "Library" => [
             "Public" => joinpath("lib", "public.md"),
             "Extending" => [
@@ -41,6 +47,8 @@ makedocs(
         "Contributing" => "contributing.md"
     ]
 )
+
+postprocess_cb()
 
 deploydocs(
     repo = "github.com/tlnagy/TiffImages.jl.git",

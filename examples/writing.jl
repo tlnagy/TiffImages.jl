@@ -86,6 +86,7 @@ ifd
 #md #     Careful with `delete!`, if any of core tags are deleted, TiffImages.jl and
 #md #     other readers might fail to read the file
 
+
 # ### Saving to disk
 #
 # Once you're happy with your TIFF object, you can write it to disk as follows:
