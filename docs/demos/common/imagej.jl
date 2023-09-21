@@ -1,28 +1,33 @@
 # ---
 # title: Writing ImageJ compatible metadata
 # description: This demo shows how to write XYZT information that works with ImageJ
-# julia: 1.0
+# author: Donghoon Lee, Tamas Nagy
+# cover: assets/fiji_logo.png
 # ---
 
 # ImageJ is a commonly used image processing software for working with TIFFs.
 # You might want to add X and Y resolution information to your `TiffImages.jl`
 # TIFFs that works with ImageJ. 
 
-# Among Tifftags, updating x and y resolution may be useful. First, we need to assign the resolution unit `RESOLUTIONUNIT`.
+# First, we need to assign the resolution unit by adding a `RESOLUTIONUNIT` tag
+# to each IFD in the image
 
 using Images, TiffImages, Unitful
 img0 = zeros(Gray{N0f8}, 10, 10, 12) #example image
 img = TiffImages.DenseTaggedImage(img0)
 
-resunit = UInt8(3) # 1: No absolute unit of measurement, 2: Inch, 3: Centimeter
-[ifd[TiffImages.RESOLUTIONUNIT] = resunit for ifd in ifds(img)]
+!isdefined(Main, :ifds) && (ifds = x-> x.ifds) #hide
 
-# Then, tifftags `XRESOLUTION` and `YRESOLUTION` display the number of pixels
-# per `RESOLUTIONUNIT`. 
+resunit = UInt8(3) # 1: No absolute unit of measurement, 2: Inch, 3: Centimeter
+[ifd[TiffImages.RESOLUTIONUNIT] = resunit for ifd in ifds(img)];
+
+# Then, we can add the `XRESOLUTION` and `YRESOLUTION` TIFF tags to store the
+# number of pixels per `RESOLUTIONUNIT`. 
 
 resxy = Rational{UInt32}(round(1u"cm"/0.653u"μm", digits = 3)) # Type must be rational. In this example, the pixel size is 0.653 μm x 0.653 μm.
 [ifd[TiffImages.XRESOLUTION] = resxy for ifd in ifds(img)]
 [ifd[TiffImages.YRESOLUTION] = resxy for ifd in ifds(img)]
+first(ifds(img))
 
 # Now if we want to add Z and time information to a TIFF, it's a bit more
 # complicated because the TIFF spec doesn't have a standard way of representing
@@ -44,6 +49,14 @@ unit=um
 finterval=0.2
 axes=TZYX"
 
+first(ifds(img))
+
 # Then write the image to disk
 
 TiffImages.save("imagej.tiff", img)
+
+# Opening the file in ImageJ shows that it's recognized as a hyperstack with the
+# proper XYZT information:
+
+# ![](assets/fiji_hyperstack.png)
+# ![](assets/fiji_properties.png)
