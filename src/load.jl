@@ -81,8 +81,7 @@ function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N; verbose = true)
 
     data = similar(cache, nrows(ifd), ncols(ifd), N)
 
-    freq = verbose ? 1 : Inf
-    @showprogress freq for (idx, ifd) in enumerate(ifds)
+    @showprogress desc="Loading:" enabled=verbose for (idx, ifd) in enumerate(ifds)
         read!(cache, tf, ifd)
         data[:, :, idx] .= cache'
     end
