@@ -203,6 +203,15 @@ function Base.iterate(file::TiffFile, state::Tuple{Union{IFD{O}, Nothing}, Int})
     return (curr_ifd, (next_ifd, next_ifd_offset))
 end
 
+struct TiffFileStrip{T}
+    tf::TiffFile
+    ifd::IFD
+    bytes::Int
+end
+
+Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = read!(tfs.tf, arr)
+Base.bytesavailable(tfs::TiffFileStrip) = tfs.bytes
+
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {T, N}
     strip_offsets = ifd[STRIPOFFSETS].data
 
@@ -229,11 +238,15 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
             strip_nbytes[end] = (rows - (rowsperstrip * (nstrips-1))) * cols * sizeof(T)
         end
 
+        bytes = ifd[STRIPBYTECOUNTS].data
+
         startbyte = 1
+        comp = Val(compression)
+        rtype = rawtype(ifd)
         for i in 1:nstrips
             seek(tf, strip_offsets[i]::Core.BuiltinInts)
             nbytes = Int(strip_nbytes[i]::Core.BuiltinInts / sizeof(T))
-            read!(tf, view(target, startbyte:(startbyte+nbytes-1)), compression)
+            read!(TiffFileStrip{rtype}(tf, ifd, bytes[i]), view(target, startbyte:(startbyte+nbytes-1)), comp)
             startbyte += nbytes
         end
     else
