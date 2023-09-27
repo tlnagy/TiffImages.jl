@@ -216,3 +216,9 @@ end
 
     @test TiffImages.iscontiguous(ifd)
 end
+
+@testset "LZW" begin
+    filepath = get_example("bali.tif")
+    im = TiffImages.load(filepath)
+    @test size(im) == (489, 725)
+end

@@ -1,13 +1,14 @@
 """
     read!(io, arr, comp)
 
-Read in an array `arr` from a stream-like `io` that supports `read!'ing`, inflating
-the data using compression method `comp`. `read!` will dispatch on the value of
-compression and use the correct compression technique to read the data.
+Read in an array `arr` from the [`TiffFile`](@ref) or [`TiffFileStrip`](@ref)
+stream `io`, inflating the data using compression method `comp`. `read!` will
+dispatch on the value of compression and use the correct compression technique
+to read the data.
 """
 Base.read!(io::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, comp::CompressionType) = read!(io, arr, Val(comp))
 
-Base.read!(tf::TiffFile, arr::AbstractArray, ::Val{COMPRESSION_NONE}) = read!(tf, arr)
+Base.read!(io::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, ::Val{COMPRESSION_NONE}) = read!(io, arr)
 
 function Base.read!(tfs::TiffFileStrip, arr::AbstractArray{T, N}, ::Val{COMPRESSION_PACKBITS}) where {T, N}
     pos = 1
@@ -214,11 +215,11 @@ julia> TiffImages.get_inflator(first(methods(read!, [TiffImages.TiffFile, Abstra
 COMPRESSION_NONE::CompressionType = 1
 ```
 """
-get_inflator(::Type{Tuple{typeof(read!), TiffFile, AbstractArray{T, N} where {T, N}, Val{C}}}) where C = C
-get_inflator(::Type{Tuple{typeof(read!), TiffFileStrip{S} where S, AbstractArray{T, N} where {T, N}, Val{C}}}) where C = C
+get_inflator(::Type{Tuple{typeof(read!), TiffFileStrip, AbstractArray{T, N} where {T, N}, Val{C}}}) where C = C
+get_inflator(::Type{Tuple{typeof(read!), Union{TiffFile, TiffFileStrip{S} where S}, AbstractArray{T, N} where {T, N}, Val{C}}}) where C = C
 
 # autogenerate nice error messages for all non-implemented inflation methods
-implemented = map(x->get_inflator(x.sig), methods(read!, [Any, AbstractArray, Val], ))
+implemented = map(x->get_inflator(x.sig), methods(read!, [Union{TiffFile, TiffFileStrip}, AbstractArray, Val], ))
 comps = Set(instances(CompressionType))
 setdiff!(comps, implemented)
 
