@@ -49,9 +49,9 @@ function lzw_decode!(io, arr::AbstractArray)
     table_pointer::Ptr{UInt8} = reinterpret(Ptr{UInt8}, Libc.malloc(output_size * 2)) # table of strings
     table_offsets_pointer::Ptr{Int} = reinterpret(Ptr{Int}, Libc.malloc(sizeof(Int) * 4097)) # offsets into table
 
-    @inline create_table_entry(length, offset) = (length << (64 - TABLE_ENTRY_LENGTH_BITS)) | offset
-    @inline table_entry_length(table_entry) = table_entry >> (64 - TABLE_ENTRY_LENGTH_BITS)
-    @inline table_entry_offset(table_entry) = table_entry & ((1 << (64 - TABLE_ENTRY_LENGTH_BITS)) - 1)
+    @inline create_table_entry(length, offset) = Base.shl_int(length, (64 - TABLE_ENTRY_LENGTH_BITS)) | offset
+    @inline table_entry_length(table_entry) = Base.lshr_int(table_entry, 64 - TABLE_ENTRY_LENGTH_BITS)
+    @inline table_entry_offset(table_entry) = table_entry & (Base.shl_int(1, 64 - TABLE_ENTRY_LENGTH_BITS) - 1)
 
     try
         # InitializeTable();
@@ -69,10 +69,10 @@ function lzw_decode!(io, arr::AbstractArray)
             old_code::Int = code
             # make sure we have enough bits in the buffer
             while bitcount < codesize
-                @inbounds buffer = (buffer << 8) | input[i+=1]
+                @inbounds buffer = Base.shl_int(buffer, 8) | input[i+=1]
                 bitcount += 8
             end
-            code = (buffer >> (bitcount - codesize)) & ((1 << codesize) - 1)
+            code = Base.lshr_int(buffer, bitcount - codesize) & (Base.shl_int(1, codesize) - 1)
             bitcount -= codesize
             # code + 1 because this is Julia
             (buffer, code + 1, old_code, bitcount, codesize, i)
