@@ -200,16 +200,18 @@ function Base.read!(tfs::TiffFileStrip{S}, arr::AbstractArray{T, N}, ::Val{COMPR
         rows = cld(length(arr), columns) # number of rows in this strip
 
         # horizontal differencing
-        temp::Vector{S} = reinterpret(S, arr)
+        temp::Ptr{S} = reinterpret(Ptr{S}, pointer(arr))
         for row in 1:rows
             start = (row - 1) * columns * spp
             for plane in 1:spp
+                previous::S = unsafe_load(temp, start + plane)
                 for i in (spp + plane):spp:(columns - 1) * spp + plane
-                    @inbounds temp[start + i] += temp[start + i - spp]
+                    current = unsafe_load(temp, start + i) + previous
+                    unsafe_store!(temp, current, start + i)
+                    previous = current
                 end
             end
         end
-        arr[:] .= reinterpret(T, temp)
     end
 end
 
