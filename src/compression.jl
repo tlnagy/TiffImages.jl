@@ -67,11 +67,19 @@ function lzw_decode!(io, arr::AbstractArray)
         read!(io, input)
         function getcode(buffer, code, bitcount, codesize, i)
             old_code::Int = code
+
             # make sure we have enough bits in the buffer
-            while bitcount < codesize
+            if bitcount < codesize
                 @inbounds buffer = Base.shl_int(buffer, 8) | input[i+=1]
                 bitcount += 8
             end
+
+            # one more time (since the max code size is 12 bits, only need to check twice)
+            if bitcount < codesize
+                @inbounds buffer = Base.shl_int(buffer, 8) | input[i+=1]
+                bitcount += 8
+            end
+
             code = Base.lshr_int(buffer, bitcount - codesize) & (Base.shl_int(1, codesize) - 1)
             bitcount -= codesize
             # code + 1 because this is Julia
