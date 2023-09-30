@@ -246,7 +246,10 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
         for i in 1:nstrips
             seek(tf, strip_offsets[i]::Core.BuiltinInts)
             nbytes = Int(strip_nbytes[i]::Core.BuiltinInts / sizeof(T))
-            read!(TiffFileStrip{rtype}(tf, ifd, bytes[i]), view(target, startbyte:(startbyte+nbytes-1)), comp)
+            tfs = TiffFileStrip{rtype}(tf, ifd, bytes[i])
+            arr = view(target, startbyte:(startbyte+nbytes-1))
+            read!(tfs, arr, comp)
+            reverse_prediction!(tfs, arr)
             startbyte += nbytes
         end
     else
@@ -309,4 +312,27 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     seek(tf, ifd_end_pos)
 
     return ifd_end_pos
+end
+
+function reverse_prediction!(tfs::TiffFileStrip{S}, arr::AbstractArray{T,N}) where {T, N, S}
+    predictor::Int = Int(getdata(tfs.ifd, PREDICTOR, 0))
+    spp::Int = Int(getdata(tfs.ifd, SAMPLESPERPIXEL, 0))
+    if predictor == 2
+        columns = Int(ncols(tfs.ifd))
+        rows = cld(length(arr), columns) # number of rows in this strip
+
+        # horizontal differencing
+        temp::Ptr{S} = reinterpret(Ptr{S}, pointer(arr))
+        for row in 1:rows
+            start = (row - 1) * columns * spp
+            for plane in 1:spp
+                previous::S = unsafe_load(temp, start + plane)
+                for i in (spp + plane):spp:(columns - 1) * spp + plane
+                    current = unsafe_load(temp, start + i) + previous
+                    unsafe_store!(temp, current, start + i)
+                    previous = current
+                end
+            end
+        end
+    end
 end

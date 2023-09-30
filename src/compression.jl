@@ -196,27 +196,6 @@ end
 
 function Base.read!(tfs::TiffFileStrip{S}, arr::AbstractArray{T, N}, ::Val{COMPRESSION_LZW}) where {T, N, S}
     lzw_decode!(tfs, arr)
-
-    predictor::Int = Int(getdata(tfs.ifd, PREDICTOR, 0))
-    spp::Int = Int(getdata(tfs.ifd, SAMPLESPERPIXEL, 0))
-    if predictor == 2
-        columns = Int(ncols(tfs.ifd))
-        rows = cld(length(arr), columns) # number of rows in this strip
-
-        # horizontal differencing
-        temp::Ptr{S} = reinterpret(Ptr{S}, pointer(arr))
-        for row in 1:rows
-            start = (row - 1) * columns * spp
-            for plane in 1:spp
-                previous::S = unsafe_load(temp, start + plane)
-                for i in (spp + plane):spp:(columns - 1) * spp + plane
-                    current = unsafe_load(temp, start + i) + previous
-                    unsafe_store!(temp, current, start + i)
-                    previous = current
-                end
-            end
-        end
-    end
 end
 
 """
