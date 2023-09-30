@@ -6,6 +6,10 @@ stream `io`, inflating the data using compression method `comp`. `read!` will
 dispatch on the value of compression and use the correct compression technique
 to read the data.
 """
+function memcpy(dest::Ptr{T}, src::Ptr{T}, n::Int) where T
+    ccall(:memcpy, Ptr{T}, (Ptr{T}, Ptr{T}, Int), dest, src, n)
+end
+
 Base.read!(io::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, comp::CompressionType) = read!(io, arr, Val(comp))
 
 Base.read!(io::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, ::Val{COMPRESSION_NONE}) = read!(io, arr)
@@ -109,7 +113,7 @@ function lzw_decode!(io, arr::AbstractArray)
                 # WriteString(StringFromCode(Code))
                 r = unsafe_load(table_offsets_pointer, code)
                 len = table_entry_length(r)
-                Base.memcpy(out_pointer + out_position, table_pointer + table_entry_offset(r), len)
+                memcpy(out_pointer + out_position, table_pointer + table_entry_offset(r), len)
                 out_position += len
             else
                 if code <= table_count
@@ -120,7 +124,7 @@ function lzw_decode!(io, arr::AbstractArray)
                     else
                         r = unsafe_load(table_offsets_pointer, code)
                         len = table_entry_length(r)
-                        Base.memcpy(out_pointer + out_position, table_pointer + table_entry_offset(r), len)
+                        memcpy(out_pointer + out_position, table_pointer + table_entry_offset(r), len)
                         out_position += len
                     end
 
@@ -132,14 +136,14 @@ function lzw_decode!(io, arr::AbstractArray)
                     else
                         r = unsafe_load(table_offsets_pointer, old_code)
                         len = table_entry_length(r)
-                        Base.memcpy(table_pointer + next_table_offset, table_pointer + table_entry_offset(r), len)
+                        memcpy(table_pointer + next_table_offset, table_pointer + table_entry_offset(r), len)
                     end
 
                     if code <= 256
                         unsafe_store!(table_pointer + next_table_offset + len, UInt8(code - 1))
                     else
                         r = unsafe_load(table_offsets_pointer, code)
-                        Base.memcpy(table_pointer + next_table_offset + len, table_pointer + table_entry_offset(r), 1)
+                        memcpy(table_pointer + next_table_offset + len, table_pointer + table_entry_offset(r), 1)
                     end
                     unsafe_store!(table_offsets_pointer, create_table_entry(len + 1, next_table_offset), table_count)
                     next_table_offset += len + 1
@@ -147,14 +151,14 @@ function lzw_decode!(io, arr::AbstractArray)
                     # WriteString(StringFromCode(OldCode) + FirstChar(StringFromCode(OldCode)));
                     r = unsafe_load(table_offsets_pointer, old_code)
                     len = table_entry_length(r)
-                    Base.memcpy(out_pointer + out_position, table_pointer + table_entry_offset(r), len)
+                    memcpy(out_pointer + out_position, table_pointer + table_entry_offset(r), len)
                     unsafe_store!(out_pointer + out_position + len, unsafe_load(table_pointer + table_entry_offset(r)))
                     out_position += len + 1
 
                     # AddStringToTable(StringFromCode(OldCode) + FirstChar(StringFromCode(OldCode)));
                     table_count += 1
-                    Base.memcpy(table_pointer + next_table_offset, table_pointer + table_entry_offset(r), len)
-                    Base.memcpy(table_pointer + next_table_offset + len, table_pointer + table_entry_offset(r), 1)
+                    memcpy(table_pointer + next_table_offset, table_pointer + table_entry_offset(r), len)
+                    memcpy(table_pointer + next_table_offset + len, table_pointer + table_entry_offset(r), 1)
                     unsafe_store!(table_offsets_pointer, create_table_entry(len + 1, next_table_offset), table_count)
                     next_table_offset += len + 1
                 end
