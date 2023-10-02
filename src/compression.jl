@@ -189,22 +189,12 @@ function lzw_decode!(io, arr::AbstractArray)
                 end
             end
 
-            # NOTE: found a case where Houdini doesn't seem to do a codesize increase
-            # if the next token to be written is EOI (ie, the output buffer should be full)...
-            # assuming this is standard behavior, although it seems to contradict the spec:
-            #
-            #     "Whenever you add a code to the output stream, it “counts” toward the decision
-            #      about bumping the code bit length. This is important when writing the last code
-            #      word before an EOI code or ClearCode, to avoid code length errors"
-            #
-            if out_position < output_size
-                if table_count == 511
-                    codesize = 10
-                elseif table_count == 1023
-                    codesize = 11
-                elseif table_count == 2047
-                    codesize = 12
-                end
+            if table_count == 511
+                codesize = 10
+            elseif table_count == 1023
+                codesize = 11
+            elseif table_count == 2047
+                codesize = 12
             end
         end
 
