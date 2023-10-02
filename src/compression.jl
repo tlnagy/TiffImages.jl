@@ -50,7 +50,8 @@ function lzw_decode!(io, arr::AbstractArray)
     output_size::Int = sizeof(arr)
     out_position::Int = 0 # current position in out
 
-    table_pointer::Ptr{UInt8} = reinterpret(Ptr{UInt8}, Libc.malloc(output_size * 2)) # table of strings
+    table_size::Int = output_size * 2 + 258
+    table_pointer::Ptr{UInt8} = reinterpret(Ptr{UInt8}, Libc.malloc(table_size)) # table of strings
     table_offsets_pointer::Ptr{Int} = reinterpret(Ptr{Int}, Libc.malloc(sizeof(Int) * 4097)) # offsets into table
 
     @inline create_table_entry(length, offset) = Base.shl_int(length, (64 - TABLE_ENTRY_LENGTH_BITS)) | offset
@@ -74,13 +75,13 @@ function lzw_decode!(io, arr::AbstractArray)
 
             # make sure we have enough bits in the buffer
             if bitcount < codesize
-                @inbounds buffer = Base.shl_int(buffer, 8) | input[i+=1]
+                buffer = Base.shl_int(buffer, 8) | input[i+=1]
                 bitcount += 8
             end
 
             # one more time (since the max code size is 12 bits, only need to check twice)
             if bitcount < codesize
-                @inbounds buffer = Base.shl_int(buffer, 8) | input[i+=1]
+                buffer = Base.shl_int(buffer, 8) | input[i+=1]
                 bitcount += 8
             end
 
@@ -89,6 +90,9 @@ function lzw_decode!(io, arr::AbstractArray)
             # code + 1 because this is Julia
             (buffer, code + 1, old_code, bitcount, codesize, i)
         end
+
+        @inline check_table_overflow(start, length) = start + length > table_size && @error "LZW: table buffer overflow"
+        @inline check_output_overflow(start, length) = start + length > output_size && @error "LZW: output buffer overflow"
 
         # annotated with excerpts from the LZW pseudocode in the TIFF 6.0 spec
         # https://developer.adobe.com/content/dam/udp/en/open/standards/tiff/TIFF6.pdf
@@ -113,6 +117,9 @@ function lzw_decode!(io, arr::AbstractArray)
                 # WriteString(StringFromCode(Code))
                 r = unsafe_load(table_offsets_pointer, code)
                 len = table_entry_length(r)
+
+                check_output_overflow(out_position, len)
+
                 memcpy(out_pointer + out_position, table_pointer + table_entry_offset(r), len)
                 out_position += len
             else
@@ -120,10 +127,18 @@ function lzw_decode!(io, arr::AbstractArray)
                     # WriteString(StringFromCode(Code));
                     if code <= 256
                         unsafe_store!(out_pointer + out_position, code - 1)
+
+                        # this is redundant with the check above, but it makes
+                        # the code easier to reason about and less bug prone
+                        check_output_overflow(out_position, 1)
+
                         out_position += 1
                     else
                         r = unsafe_load(table_offsets_pointer, code)
                         len = table_entry_length(r)
+
+                        check_output_overflow(out_position, len)
+
                         memcpy(out_pointer + out_position, table_pointer + table_entry_offset(r), len)
                         out_position += len
                     end
@@ -132,10 +147,15 @@ function lzw_decode!(io, arr::AbstractArray)
                     table_count += 1
                     len = 1
                     if old_code <= 256
+                        check_table_overflow(next_table_offset, 2) # this byte + the next one
+
                         unsafe_store!(table_pointer + next_table_offset, UInt8(old_code - 1))
                     else
                         r = unsafe_load(table_offsets_pointer, old_code)
                         len = table_entry_length(r)
+
+                        check_table_overflow(next_table_offset, len + 1) # these bytes + the next one
+
                         memcpy(table_pointer + next_table_offset, table_pointer + table_entry_offset(r), len)
                     end
 
@@ -151,9 +171,14 @@ function lzw_decode!(io, arr::AbstractArray)
                     # WriteString(StringFromCode(OldCode) + FirstChar(StringFromCode(OldCode)));
                     r = unsafe_load(table_offsets_pointer, old_code)
                     len = table_entry_length(r)
+
+                    check_output_overflow(out_position, len + 1)
+
                     memcpy(out_pointer + out_position, table_pointer + table_entry_offset(r), len)
                     unsafe_store!(out_pointer + out_position + len, unsafe_load(table_pointer + table_entry_offset(r)))
                     out_position += len + 1
+
+                    check_table_overflow(next_table_offset, len + 1)
 
                     # AddStringToTable(StringFromCode(OldCode) + FirstChar(StringFromCode(OldCode)));
                     table_count += 1
