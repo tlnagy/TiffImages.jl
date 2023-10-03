@@ -126,12 +126,11 @@ function lzw_decode!(io, arr::AbstractArray)
                 if code <= table_count
                     # WriteString(StringFromCode(Code));
                     if code <= 256
-                        unsafe_store!(out_pointer + out_position, code - 1)
-
                         # this is redundant with the check above, but it makes
                         # the code easier to reason about and less bug prone
                         check_output_overflow(out_position, 1)
 
+                        unsafe_store!(out_pointer + out_position, code - 1)
                         out_position += 1
                     else
                         r = unsafe_load(table_offsets_pointer, code)
