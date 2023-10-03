@@ -218,7 +218,7 @@ end
 end
 
 @testset "LZW" begin
-    filepath = get_example("bali.tif")
-    im = TiffImages.load(filepath)
-    @test size(im) == (489, 725)
+    uncompressed = get_example("shapes_uncompressed.tif")
+    compressed = get_example("shapes_lzw.tif")
+    @test TiffImages.load(uncompressed) == TiffImages.load(compressed)
 end
