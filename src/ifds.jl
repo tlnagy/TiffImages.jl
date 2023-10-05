@@ -212,11 +212,11 @@ pixels in the image
 
 $(FIELDS)
 """
-struct TiffFileStrip{T}
+struct TiffFileStrip{O, S, P}
     """The file stream"""
-    tf::TiffFile
+    tf::TiffFile{O, S}
     """The IFD corresponding to this strip"""
-    ifd::IFD
+    ifd::IFD{O}
     """The number of bytes in this strip"""
     bytes::Int
 end
@@ -224,7 +224,7 @@ end
 Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = read!(tfs.tf, arr)
 Base.bytesavailable(tfs::TiffFileStrip) = tfs.bytes
 
-function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {T, N}
+function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}) where {T, N, O, S}
     strip_offsets = ifd[STRIPOFFSETS].data
 
     if PLANARCONFIG in ifd
@@ -258,7 +258,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
         for i in 1:nstrips
             seek(tf, strip_offsets[i]::Core.BuiltinInts)
             nbytes = Int(strip_nbytes[i]::Core.BuiltinInts / sizeof(T))
-            tfs = TiffFileStrip{rtype}(tf, ifd, bytes[i])
+            tfs = TiffFileStrip{O, S, rtype}(tf, ifd, bytes[i])
             arr = view(target, startbyte:(startbyte+nbytes-1))
             read!(tfs, arr, comp)
             reverse_prediction!(tfs, arr)
@@ -326,7 +326,7 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     return ifd_end_pos
 end
 
-function reverse_prediction!(tfs::TiffFileStrip{S}, arr::AbstractArray{T,N}) where {T, N, S}
+function reverse_prediction!(tfs::TiffFileStrip{O, S, P}, arr::AbstractArray{T, N}) where {O, S, P, T, N}
     predictor::Int = Int(getdata(tfs.ifd, PREDICTOR, 0))
     spp::Int = Int(getdata(tfs.ifd, SAMPLESPERPIXEL, 0))
     if predictor == 2
@@ -334,11 +334,11 @@ function reverse_prediction!(tfs::TiffFileStrip{S}, arr::AbstractArray{T,N}) whe
         rows = cld(length(arr), columns) # number of rows in this strip
 
         # horizontal differencing
-        temp::Ptr{S} = reinterpret(Ptr{S}, pointer(arr))
+        temp::Ptr{P} = reinterpret(Ptr{S}, pointer(arr))
         for row in 1:rows
             start = (row - 1) * columns * spp
             for plane in 1:spp
-                previous::S = unsafe_load(temp, start + plane)
+                previous::P = unsafe_load(temp, start + plane)
                 for i in (spp + plane):spp:(columns - 1) * spp + plane
                     current = unsafe_load(temp, start + i) + previous
                     unsafe_store!(temp, current, start + i)
