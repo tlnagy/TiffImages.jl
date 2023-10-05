@@ -203,9 +203,21 @@ function Base.iterate(file::TiffFile, state::Tuple{Union{IFD{O}, Nothing}, Int})
     return (curr_ifd, (next_ifd, next_ifd_offset))
 end
 
+"""
+    $(TYPEDEF)
+
+A strip is a contiguous block of separately-encoded image data. A TIFF
+file will typically have multiple strips, each representing multiple rows of
+pixels in the image
+
+$(FIELDS)
+"""
 struct TiffFileStrip{T}
+    """The file stream"""
     tf::TiffFile
+    """The IFD corresponding to this strip"""
     ifd::IFD
+    """The number of bytes in this strip"""
     bytes::Int
 end
 
