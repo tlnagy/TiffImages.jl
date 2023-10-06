@@ -334,7 +334,7 @@ function reverse_prediction!(tfs::TiffFileStrip{O, S, P}, arr::AbstractArray{T, 
         rows = cld(length(arr), columns) # number of rows in this strip
 
         # horizontal differencing
-        temp::Ptr{P} = reinterpret(Ptr{S}, pointer(arr))
+        temp::Ptr{P} = reinterpret(Ptr{P}, pointer(arr))
         for row in 1:rows
             start = (row - 1) * columns * spp
             for plane in 1:spp
