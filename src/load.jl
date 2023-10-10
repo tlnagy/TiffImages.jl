@@ -70,8 +70,7 @@ function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, ::Nothing; verbose = tr
     ifd = ifds[1]
     cache = getcache(ifd)
     read!(cache, tf, ifd)
-
-    return Matrix(cache')
+    istiled(ifd) ? Matrix(tile(cache, ifd)) : Matrix(cache')
 end
 
 function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N; verbose = true)
@@ -83,8 +82,27 @@ function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N; verbose = true)
 
     @showprogress desc="Loading:" enabled=verbose for (idx, ifd) in enumerate(ifds)
         read!(cache, tf, ifd)
-        data[:, :, idx] .= cache'
+        data[:, :, idx] .= (istiled(ifd) ? tile(cache, ifd) : cache')
     end
 
     return data
+end
+
+function tile(cache, ifd)
+    rows = nrows(ifd)
+    cols = ncols(ifd)
+    width = tilecols(ifd) # width of a tile
+    height = tilerows(ifd) # height of a tile
+    tileswidth = cld(cols, width) # number of tiles in a row
+    tilesheight = cld(rows, height) # number of tiles in a column
+    tilesize = width * height # number of pixels in a tile
+
+    # tiles are encoded linearly; we need to reshape each strip into a tile and ...
+    tiles = adjoint.(reshape.(Iterators.partition(cache, tilesize), width, height))
+
+    # ... arrange the tiles to get a padded image, which needs to be ...
+    padded_image = vcat(map(row -> hcat(row...), Iterators.partition(tiles, tileswidth))...)
+
+    # ... cropped because the encoded image is padded to tile boundaries
+    padded_image[1:rows, 1:cols]
 end

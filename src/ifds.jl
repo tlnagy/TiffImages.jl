@@ -207,7 +207,7 @@ end
     $(TYPEDEF)
 
 A strip is a contiguous block of separately-encoded image data. A TIFF
-file will typically have multiple strips, each representing multiple rows of
+file will typically have multiple strips, each decoding to multiple rows of
 pixels in the image
 
 $(FIELDS)
@@ -225,47 +225,45 @@ Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = read!(tfs.tf, arr)
 Base.bytesavailable(tfs::TiffFileStrip) = tfs.bytes
 
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}) where {T, N, O, S}
-    strip_offsets = ifd[STRIPOFFSETS].data
-
     if PLANARCONFIG in ifd
         planarconfig = ifd[PLANARCONFIG].data
         (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
     end
 
-    rows = nrows(ifd)
-    cols = ncols(ifd)
+    offsets = istiled(ifd) ? ifd[TILEOFFSETS].data : ifd[STRIPOFFSETS].data
     compression = getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE)
 
     if !iscontiguous(ifd) || compression != COMPRESSION_NONE
-        rowsperstrip = rows
-        (ROWSPERSTRIP in ifd) && (rowsperstrip = ifd[ROWSPERSTRIP].data)
-        nstrips = ceil(Int, rows / rowsperstrip)
+        # number of input bytes in each strip or tile
+        encoded_bytes = istiled(ifd) ? ifd[TILEBYTECOUNTS].data : ifd[STRIPBYTECOUNTS].data
 
-        strip_nbytes = ifd[STRIPBYTECOUNTS].data
+        if istiled(ifd)
+            strip_pixels = map(_ -> tilecols(ifd) * tilerows(ifd), encoded_bytes)
+        else
+            rows = nrows(ifd)
+            cols = ncols(ifd)
+            nstrips = length(encoded_bytes)
+            rowsperstrip = getdata(Int, ifd, ROWSPERSTRIP, rows)
 
-        if compression != COMPRESSION_NONE
-            # strip_nbytes is the number of bytes pre-inflation so we need to
-            # calculate the expected size once decompressed and update the values
-            strip_nbytes = fill(rowsperstrip*cols*sizeof(T), length(strip_nbytes)::Int)
-            strip_nbytes[end] = (rows - (rowsperstrip * (nstrips-1))) * cols * sizeof(T)
+            strip_pixels = fill(rowsperstrip * cols, nstrips)
+            strip_pixels[end] = (rows - (rowsperstrip * (nstrips - 1))) * cols
+
+            @assert sum(strip_pixels) == rows * cols
         end
 
-        bytes = ifd[STRIPBYTECOUNTS].data
-
-        startbyte = 1
+        start = 1
         comp = Val(compression)
         rtype = rawtype(ifd)
-        for i in 1:nstrips
-            seek(tf, strip_offsets[i]::Core.BuiltinInts)
-            nbytes = Int(strip_nbytes[i]::Core.BuiltinInts / sizeof(T))
-            tfs = TiffFileStrip{O, S, rtype}(tf, ifd, bytes[i])
-            arr = view(target, startbyte:(startbyte+nbytes-1))
+        for (offset, len, bytes) in zip(offsets, strip_pixels, encoded_bytes)
+            seek(tf, offset)
+            tfs = TiffFileStrip{O, S, rtype}(tf, ifd, bytes)
+            arr = view(target, start:(start+len-1))
             read!(tfs, arr, comp)
             reverse_prediction!(tfs, arr)
-            startbyte += nbytes
+            start += len
         end
     else
-        seek(tf, strip_offsets[1]::Core.BuiltinInts)
+        seek(tf, first(offsets))
         read!(tf, target, compression)
     end
 end
@@ -327,11 +325,11 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
 end
 
 function reverse_prediction!(tfs::TiffFileStrip{O, S, P}, arr::AbstractArray{T, N}) where {O, S, P, T, N}
-    predictor::Int = Int(getdata(tfs.ifd, PREDICTOR, 0))
-    spp::Int = Int(getdata(tfs.ifd, SAMPLESPERPIXEL, 0))
-    if predictor == 2
-        columns = Int(ncols(tfs.ifd))
-        rows = cld(length(arr), columns) # number of rows in this strip
+    pred::Int = predictor(tfs.ifd)
+    spp::Int = nsamples(tfs.ifd)
+    if pred == 2
+        columns = istiled(tfs.ifd) ? tilecols(tfs.ifd) : ncols(tfs.ifd)
+        rows = istiled(tfs.ifd) ? tilerows(tfs.ifd) : cld(length(arr), columns)
 
         # horizontal differencing
         temp::Ptr{P} = reinterpret(Ptr{P}, pointer(arr))

@@ -222,3 +222,9 @@ end
     compressed = get_example("shapes_lzw.tif")
     @test TiffImages.load(uncompressed) == TiffImages.load(compressed)
 end
+
+@testset "Tiled" begin
+    uncompressed = get_example("shapes_uncompressed.tif")
+    compressed_tiled = get_example("shapes_lzw_tiled.tif")
+    @test TiffImages.load(uncompressed) == TiffImages.load(compressed_tiled)
+end

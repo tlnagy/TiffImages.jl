@@ -1,13 +1,11 @@
+istiled(ifd::IFD) = TILEWIDTH in ifd
+tilecols(ifd::IFD) = Int(ifd[TILEWIDTH].data)::Int
+tilerows(ifd::IFD) = Int(ifd[TILELENGTH].data)::Int
 nrows(ifd::IFD) = Int(ifd[IMAGELENGTH].data)::Int
 ncols(ifd::IFD) = Int(ifd[IMAGEWIDTH].data)::Int
-
-function nsamples(ifd::IFD)
-    if SAMPLESPERPIXEL in ifd
-        Int(ifd[SAMPLESPERPIXEL].data)::Int
-    else
-        1
-    end
-end
+ntiles(ifd) = Int(length(ifd[TILEOFFSETS]))::Int
+nsamples(ifd::IFD) = Int(getdata(ifd, SAMPLESPERPIXEL, 1))
+predictor(ifd::IFD) = Int(getdata(ifd, PREDICTOR, 0))
 
 """
     interpretation(ifd)
@@ -89,5 +87,11 @@ function getcache(ifd::IFD)
         return BitArray(undef, ncols(ifd), nrows(ifd))
     end
     colortype, extras = interpretation(ifd)
-    return Array{colortype{_mappedtype(T)}}(undef, ncols(ifd), nrows(ifd))
+    if istiled(ifd)
+        tile_width = tilecols(ifd)
+        tile_height = tilerows(ifd)
+        return Array{colortype{_mappedtype(T)}}(undef, cld(ncols(ifd), tile_width) * tile_width, cld(nrows(ifd), tile_height) * tile_height)
+    else
+        return Array{colortype{_mappedtype(T)}}(undef, ncols(ifd), nrows(ifd))
+    end
 end
