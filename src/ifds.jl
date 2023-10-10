@@ -203,7 +203,28 @@ function Base.iterate(file::TiffFile, state::Tuple{Union{IFD{O}, Nothing}, Int})
     return (curr_ifd, (next_ifd, next_ifd_offset))
 end
 
-function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {T, N}
+"""
+    $(TYPEDEF)
+
+A strip is a contiguous block of separately-encoded image data. A TIFF
+file will typically have multiple strips, each representing multiple rows of
+pixels in the image
+
+$(FIELDS)
+"""
+struct TiffFileStrip{O, S, P}
+    """The file stream"""
+    tf::TiffFile{O, S}
+    """The IFD corresponding to this strip"""
+    ifd::IFD{O}
+    """The number of bytes in this strip"""
+    bytes::Int
+end
+
+Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = read!(tfs.tf, arr)
+Base.bytesavailable(tfs::TiffFileStrip) = tfs.bytes
+
+function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}) where {T, N, O, S}
     strip_offsets = ifd[STRIPOFFSETS].data
 
     if PLANARCONFIG in ifd
@@ -229,11 +250,18 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile, ifd::IFD) where {
             strip_nbytes[end] = (rows - (rowsperstrip * (nstrips-1))) * cols * sizeof(T)
         end
 
+        bytes = ifd[STRIPBYTECOUNTS].data
+
         startbyte = 1
+        comp = Val(compression)
+        rtype = rawtype(ifd)
         for i in 1:nstrips
             seek(tf, strip_offsets[i]::Core.BuiltinInts)
             nbytes = Int(strip_nbytes[i]::Core.BuiltinInts / sizeof(T))
-            read!(tf, view(target, startbyte:(startbyte+nbytes-1)), compression)
+            tfs = TiffFileStrip{O, S, rtype}(tf, ifd, bytes[i])
+            arr = view(target, startbyte:(startbyte+nbytes-1))
+            read!(tfs, arr, comp)
+            reverse_prediction!(tfs, arr)
             startbyte += nbytes
         end
     else
@@ -296,4 +324,27 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     seek(tf, ifd_end_pos)
 
     return ifd_end_pos
+end
+
+function reverse_prediction!(tfs::TiffFileStrip{O, S, P}, arr::AbstractArray{T, N}) where {O, S, P, T, N}
+    predictor::Int = Int(getdata(tfs.ifd, PREDICTOR, 0))
+    spp::Int = Int(getdata(tfs.ifd, SAMPLESPERPIXEL, 0))
+    if predictor == 2
+        columns = Int(ncols(tfs.ifd))
+        rows = cld(length(arr), columns) # number of rows in this strip
+
+        # horizontal differencing
+        temp::Ptr{P} = reinterpret(Ptr{P}, pointer(arr))
+        for row in 1:rows
+            start = (row - 1) * columns * spp
+            for plane in 1:spp
+                previous::P = unsafe_load(temp, start + plane)
+                for i in (spp + plane):spp:(columns - 1) * spp + plane
+                    current = unsafe_load(temp, start + i) + previous
+                    unsafe_store!(temp, current, start + i)
+                    previous = current
+                end
+            end
+        end
+    end
 end

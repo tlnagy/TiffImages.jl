@@ -216,3 +216,9 @@ end
 
     @test TiffImages.iscontiguous(ifd)
 end
+
+@testset "LZW" begin
+    uncompressed = get_example("shapes_uncompressed.tif")
+    compressed = get_example("shapes_lzw.tif")
+    @test TiffImages.load(uncompressed) == TiffImages.load(compressed)
+end
