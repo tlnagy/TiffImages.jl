@@ -6,6 +6,9 @@ true, false, and false by default, respectively. Setting `verbose` to false
 will hide the loading bar, while setting either `lazyio` or `mmap` to true
 defer loading until the data are needed (by either of two mechanisms).
 
+Parallelism is enabled by default, but can be disabled by setting
+`JULIA_IMAGES_PARALLEL`=false in your environment
+
 See [Lazy TIFFs](@ref) for more details about memory-mapping and lazy I/O.
 """
 function load(filepath::String; mode = "r", kwargs...)
