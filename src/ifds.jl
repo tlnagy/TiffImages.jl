@@ -390,14 +390,13 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
     pred::Int = predictor(ifd)
     # for planar data, each "pixel" in the strip is actually a single channel
     spp::Int = isplanar(ifd) ? 1 : nsamples(ifd)
-    if pred == 2
-        @debug "reversing horizontal differencing"
+    columns = istiled(ifd) ? tilecols(ifd) : ncols(ifd)
+    rows = istiled(ifd) ? tilerows(ifd) : cld(length(arr), columns * spp)
 
-        columns = istiled(ifd) ? tilecols(ifd) : ncols(ifd)
-        rows = istiled(ifd) ? tilerows(ifd) : cld(length(arr), columns * spp)
+    GC.@preserve arr begin
+        if pred == 2
+            @debug "reversing horizontal differencing"
 
-        # horizontal differencing
-        GC.@preserve arr begin
             temp::Ptr{T} = pointer(arr)
             for row in 1:rows
                 start = (row - 1) * columns * spp
@@ -410,6 +409,27 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
                     end
                 end
             end
+        elseif pred == 3
+            @debug "reversing float differencing"
+
+            columns = columns * spp * sizeof(T)
+
+            temp2::Ptr{UInt8} = pointer(reinterpret(UInt8, arr))
+            for row in 1:rows
+                start = (row - 1) * columns
+                for plane in 1:spp
+                    prev::UInt8 = unsafe_load(temp2, start + plane)
+                    for i in (spp + plane):spp:(columns - 1) + plane
+                        curr = unsafe_load(temp2, start + i) + prev
+                        unsafe_store!(temp2, curr, start + i)
+                        prev = curr
+                    end
+                end
+                vw = view(reinterpret(UInt8, arr), start+1:start+columns)
+                vw .= deplane(vw, sizeof(T))
+            end
+
+            arr .= bswap.(arr)
         end
     end
 end

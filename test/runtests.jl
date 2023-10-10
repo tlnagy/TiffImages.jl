@@ -302,3 +302,9 @@ end
 
     @test xs == recoded
 end
+
+@testset "predictor == 3" begin
+    original = get_example("shapes_uncompressed.tif")
+    encoded = get_example("shapes_lzw_predictor3.tif")
+    @test TiffImages.load(original) == TiffImages.load(encoded)
+end
