@@ -1,3 +1,5 @@
+import .Iterators.partition
+
 """
     $(TYPEDEF)
 
@@ -224,43 +226,54 @@ Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = read!(tfs.io, arr)
 Base.bytesavailable(tfs::TiffFileStrip) = bytesavailable(tfs.io)
 
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}) where {T, N, O, S}
-    if PLANARCONFIG in ifd
-        planarconfig = ifd[PLANARCONFIG].data
-        (planarconfig != 1) && error("Images with data stored in planar format not yet supported")
-    end
-
     offsets = istiled(ifd) ? ifd[TILEOFFSETS].data : ifd[STRIPOFFSETS].data
     compression = getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE)
 
-    if !iscontiguous(ifd) || compression != COMPRESSION_NONE
-        # number of input bytes in each strip or tile
-        encoded_bytes = istiled(ifd) ? ifd[TILEBYTECOUNTS].data : ifd[STRIPBYTECOUNTS].data
+    rtype = rawtype(ifd)
+    spp = nsamples(ifd)
+    rows = nrows(ifd)
+    cols = ncols(ifd)
+    samples = reinterpret(rtype, target)
 
-        rows = nrows(ifd)
-        cols = ncols(ifd)
+    cmprssn = compression == COMPRESSION_NONE ? "uncompressed" : "compressed"
+    @debug "reading $(cmprssn), $(istiled(ifd) ? "tiled" : "striped"), $(isplanar(ifd) ? "planar" : "chunky") image"
 
-        if istiled(ifd)
-            strip_pixels = map(_ -> tilecols(ifd) * tilerows(ifd), encoded_bytes)
+    # number of input bytes in each strip or tile
+    encoded_bytes = istiled(ifd) ? ifd[TILEBYTECOUNTS].data : ifd[STRIPBYTECOUNTS].data
+
+    # number of samples (pixels * channels) in each strip or tile
+    strip_samples::Vector{Int} = []
+    if istiled(ifd)
+        @debug "tile size: $(tilecols(ifd)) x $(tilerows(ifd))"
+        # tiled images are always padded to tile boundaries
+        strip_samples = map(_ -> tilecols(ifd) * tilerows(ifd) * (isplanar(ifd) ? 1 : spp), encoded_bytes)
+    else
+        nstrips = length(encoded_bytes)
+        rowsperstrip = getdata(Int, ifd, ROWSPERSTRIP, rows)
+
+        if isplanar(ifd)
+            # planar files will have separate strips or tiles for each channel
+            temp = fill(rowsperstrip * cols, cld(rows, rowsperstrip))
+            temp[end] = (rows - (rowsperstrip * (length(temp) - 1))) * cols
+            strip_samples = repeat(temp, spp)
         else
-            nstrips = length(encoded_bytes)
-            rowsperstrip = getdata(Int, ifd, ROWSPERSTRIP, rows)
-
-            strip_pixels = fill(rowsperstrip * cols, nstrips)
-            strip_pixels[end] = (rows - (rowsperstrip * (nstrips - 1))) * cols
-
-            @assert sum(strip_pixels) == rows * cols
+            strip_samples = fill(rowsperstrip * cols * spp, nstrips)
+            strip_samples[end] = (rows - (rowsperstrip * (nstrips - 1))) * cols * spp
         end
 
-        parallel_enabled = something(tryparse(Bool, get(ENV, "JULIA_IMAGES_PARALLEL", "1")), false)
-        do_parallel = parallel_enabled && rows * cols > 250_000 # pixels
+        @assert sum(strip_samples) == rows * cols * spp
+    end
 
+    parallel_enabled = something(tryparse(Bool, get(ENV, "JULIA_IMAGES_PARALLEL", "1")), false)
+    do_parallel = parallel_enabled && rows * cols > 250_000 # pixels
+
+    if !iscontiguous(ifd) || compression != COMPRESSION_NONE
         start = 1
         comp = Val(compression)
-        rtype = rawtype(ifd)
         tasks::Vector{Task} = []
-        for (offset, len, bytes) in zip(offsets, strip_pixels, encoded_bytes)
+        for (offset, len, bytes) in zip(offsets, strip_samples, encoded_bytes)
             seek(tf, offset)
-            arr = view(target, start:(start+len-1))
+            arr = view(samples, start:(start+len-1))
             data = Vector{UInt8}(undef, bytes)
             read!(tf, data)
             tfs = TiffFileStrip{O, rtype}(IOBuffer(data), ifd)
@@ -285,6 +298,14 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
     else
         seek(tf, first(offsets))
         read!(tf, target, compression)
+    end
+
+    if isplanar(ifd)
+        samplesv = vec(samples)
+        temp = deplane(samplesv, spp)
+        GC.@preserve samplesv temp target begin
+            memcpy(pointer(samplesv), pointer(temp), sizeof(target))
+        end
     end
 end
 
@@ -344,20 +365,21 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     return ifd_end_pos
 end
 
-function reverse_prediction!(tfs::TiffFileStrip{O, P}, arr::AbstractArray{T,N}) where {O, P, T, N}
+function reverse_prediction!(tfs::TiffFileStrip{O}, arr::AbstractArray{T,N}) where {O, T, N}
     pred::Int = predictor(tfs.ifd)
-    spp::Int = nsamples(tfs.ifd)
+    # for planar data, each row of data represents a single channel
+    spp::Int = isplanar(tfs.ifd) ? 1 : nsamples(tfs.ifd)
     if pred == 2
         columns = istiled(tfs.ifd) ? tilecols(tfs.ifd) : ncols(tfs.ifd)
-        rows = istiled(tfs.ifd) ? tilerows(tfs.ifd) : cld(length(arr), columns)
+        rows = istiled(tfs.ifd) ? tilerows(tfs.ifd) : cld(length(arr), columns * spp)
 
-        # horizontal differencing
         GC.@preserve arr begin
-            temp::Ptr{P} = reinterpret(Ptr{P}, pointer(arr))
+            # horizontal differencing
+            temp::Ptr{T} = pointer(arr)
             for row in 1:rows
                 start = (row - 1) * columns * spp
                 for plane in 1:spp
-                    previous::P = unsafe_load(temp, start + plane)
+                    previous::T = unsafe_load(temp, start + plane)
                     for i in (spp + plane):spp:(columns - 1) * spp + plane
                         current = unsafe_load(temp, start + i) + previous
                         unsafe_store!(temp, current, start + i)
@@ -365,6 +387,86 @@ function reverse_prediction!(tfs::TiffFileStrip{O, P}, arr::AbstractArray{T,N}) 
                     end
                 end
             end
+        end
+    end
+end
+
+deplane(arr::AbstractVector, n::Integer) = deplane_simd(arr, Val(n))
+
+# {AAA...BBB...CCC...} => {ABCABCABC...}
+function deplane_slow(arr::AbstractVector{T}, n) where T
+    @debug "rearranging planar data"
+    reshape(arr, fld(length(arr), n), n)'[:]
+end
+
+# {AAA...BBB...CCC...} => {ABCABCABC...}
+@generated function deplane_simd(arr::AbstractVector{T}, ::Val{N}) where {T, N}
+    width = cld(sizeof(T) * N, 64) * 64
+    count = fld(width, sizeof(T) * N) # pixels per iteration
+
+    sym(x) = Symbol("q", x)
+
+    # vload {AAA...}
+    # vload {BBB...}
+    # ...
+    loads = map(x -> :($(sym(x + 1)) = vload(Vec{$count * $(max(1, x)), T}, ptrA + (index + num_pixels * $x - 1) * $(sizeof(T)))), 0:N-1)
+
+    # shuffle1 = {0, X, 1, X+1, ...}
+    # shuffle2 = {0, 1, X, 2, 3, X+1, ...}
+    # ...
+    perms = []
+    for k in 1:N-1
+        left = count * k # number of elements in the first shuffle vector (see below)
+        # take `k` elements from the first vector, followed by one from the second vector, repeated `count` times
+        shuffle::Vector{Int} = mapreduce(x -> vcat(x...), vcat, zip(collect.(partition(0:left-1,k)), left:left+count-1))
+        push!(perms, :($(Symbol("shuffle", k)) = $(Val(Tuple(shuffle)))))
+    end
+
+    # shufflevector {AAA...}, {BBB...}, shuffle1 => {ABABAB...}
+    # shufflevector {ABABAB...}, {CCC...}, shuffle2 => {ABCABCABC...}
+    # ...
+    shuffles::Vector{Expr} = []
+    ll, rr = sym(1), 1
+    for x in 1:N-1
+        input1 = ll
+        ll = sym(x + N)
+        input2 = sym(rr += 1)
+        push!(shuffles, :($ll = shufflevector($input1, $input2, $(Symbol("shuffle", x)))))
+    end
+    push!(shuffles, :(final = $ll))
+
+    # assignments for each channel in the final loop
+    finish = map(x -> :(out[start + i * $N + $x] = arr[iterations * $count + i + num_pixels * $x + 1]), 0:N-1)
+
+    quote
+        @debug "rearranging planar data (SIMD)"
+
+        GC.@preserve arr begin
+            ptrA = pointer(arr)
+            out = Vector{T}(undef, length(arr) + $count)
+            num_pixels = fld(length(arr), N)
+            iterations = fld(num_pixels, $count) - 1
+            out_index = 1 # output index
+
+            $(perms...)
+
+            @inbounds for index in 1:$count:iterations*$count
+                $(loads...)
+                $(shuffles...)
+
+                vstore(final, out, out_index)
+
+                out_index += $count * N
+            end
+
+            remaining = num_pixels - iterations * $count
+            start = iterations * $count * N + 1
+
+            @inbounds for i in 0:remaining-1
+                $(finish...)
+            end
+
+            resize!(out, length(out) - $count)
         end
     end
 end

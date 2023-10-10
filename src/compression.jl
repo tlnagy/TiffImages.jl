@@ -10,9 +10,9 @@ function memcpy(dest::Ptr{T}, src::Ptr{T}, n::Int) where T
     ccall(:memcpy, Ptr{T}, (Ptr{T}, Ptr{T}, Int), dest, src, n)
 end
 
-Base.read!(io::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, comp::CompressionType) = read!(io, arr, Val(comp))
+Base.read!(tfs::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, comp::CompressionType) = read!(tfs, arr, Val(comp))
 
-Base.read!(io::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, ::Val{COMPRESSION_NONE}) = read!(io, arr)
+Base.read!(tfs::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, ::Val{COMPRESSION_NONE}) = read!(tfs, arr)
 
 function Base.read!(tfs::TiffFileStrip, arr::AbstractArray{T, N}, ::Val{COMPRESSION_PACKBITS}) where {T, N}
     pos = 1
