@@ -1,3 +1,5 @@
+import .Iterators: partition
+
 """
     $(SIGNATURES)
 
@@ -41,6 +43,12 @@ function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
             loaded = load(tf, ifds, nplanes; verbose=verbose)
         end
     end
+
+    if tf.need_bswap && !is_irregular_bps(ifd)
+        @debug "bswap'ing data"
+        loaded = bswap.(loaded)
+    end
+
     data = fixcolors(loaded, first(ifds))
 
     close(tf.io)
@@ -51,8 +59,7 @@ end
     fixcolors(loaded, ifd)
 
 Wrap the raw eltype of an image with color if needed, e.g. for space efficient
-on-disk representations like palette-colored images and bitarrays. Otherwise,
-just return the passed image.
+on-disk representations like palette-colored images. Otherwise, just return the passed image.
 """
 function fixcolors(loaded, ifd)
     if eltype(loaded) <: Palette
@@ -62,8 +69,6 @@ function fixcolors(loaded, ifd)
         colors = ifd[COLORMAP].data
         color_map = vec(reinterpret(RGB{N0f16}, reshape(colors, :, 3)'))
         return IndirectArray(loadedr, OffsetArray(color_map, 0:maxdepth))
-    elseif eltype(loaded) <: Bool
-        return Gray.(loaded)
     else
         return loaded
     end
@@ -101,10 +106,10 @@ function tile(cache, ifd)
     tilesize = width * height # number of pixels in a tile
 
     # tiles are encoded linearly; we need to reshape each strip into a tile and ...
-    tiles = adjoint.(reshape.(Iterators.partition(cache, tilesize), width, height))
+    tiles = adjoint.(reshape.(partition(cache, tilesize), width, height))
 
     # ... arrange the tiles to get a padded image, which needs to be ...
-    padded_image = vcat(map(row -> hcat(row...), Iterators.partition(tiles, tileswidth))...)
+    padded_image = vcat(map(row -> hcat(row...), partition(tiles, tileswidth))...)
 
     # ... cropped because the encoded image is padded to tile boundaries
     padded_image[1:rows, 1:cols]

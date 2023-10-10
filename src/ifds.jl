@@ -230,19 +230,33 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
     compression = getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE)
 
     rtype = rawtype(ifd)
-    spp = nsamples(ifd)
+    spp = ispalette(ifd) ? 1 : nsamples(ifd)
     rows = nrows(ifd)
     cols = ncols(ifd)
+    bps = bitspersample(ifd)
     samples = reinterpret(rtype, target)
 
-    cmprssn = compression == COMPRESSION_NONE ? "uncompressed" : "compressed"
-    @debug "reading $(cmprssn), $(istiled(ifd) ? "tiled" : "striped"), $(isplanar(ifd) ? "planar" : "chunky") image"
+    function info()
+        compression_name = "?"
+        if compression == COMPRESSION_LZW
+            compression_name = "LZW"
+        elseif compression == COMPRESSION_DEFLATE || compression == COMPRESSION_ADOBE_DEFLATE
+            compression_name = "Zip"
+        elseif compression == COMPRESSION_PACKBITS
+            compression_name = "PackBits"
+        end
+
+        cmprssn = compression == COMPRESSION_NONE ? "uncompressed" : "$compression_name-compressed"
+        chunks = (istiled(ifd) ? "tile" : "strip") * (length(offsets) == 1 ? "" : "s")
+        "reading $(cmprssn), $(isplanar(ifd) ? "planar" : "chunky") image with $(length(offsets)) $(chunks)"
+    end
+
+    @debug info()
 
     # number of input bytes in each strip or tile
     encoded_bytes = TILEBYTECOUNTS in ifd ? ifd[TILEBYTECOUNTS].data : ifd[STRIPBYTECOUNTS].data
 
     # number of samples (pixels * channels) in each strip or tile
-    strip_samples::Vector{Int} = []
     if istiled(ifd)
         @debug "tile size: $(tilecols(ifd)) x $(tilerows(ifd))"
         # tiled images are always padded to tile boundaries
@@ -267,37 +281,41 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
     parallel_enabled = something(tryparse(Bool, get(ENV, "JULIA_IMAGES_PARALLEL", "1")), false)
     do_parallel = parallel_enabled && rows * cols > 250_000 # pixels
 
-    if !iscontiguous(ifd) || compression != COMPRESSION_NONE
-        start = 1
-        comp = Val(compression)
-        tasks::Vector{Task} = []
-        for (offset, len, bytes) in zip(offsets, strip_samples, encoded_bytes)
-            seek(tf, offset)
-            arr = view(samples, start:(start+len-1))
-            data = Vector{UInt8}(undef, bytes)
-            read!(tf, data)
-            tfs = TiffFileStrip{O}(IOBuffer(data), ifd)
+    tasks::Vector{Task} = []
+    start = 1
+    comp = Val(compression)
+    for (offset, len, bytes) in zip(offsets, strip_samples, encoded_bytes)
+        @debug "reading strip with $len samples from $bytes encoded bytes"
 
-            function go(tfs, arr, comp)
-                read!(tfs, arr, comp)
-                reverse_prediction!(tfs, arr)
+        seek(tf, offset)
+        arr = view(samples, start:(start+len-1))
+        data = Vector{UInt8}(undef, bytes)
+        read!(tf, data)
+        tfs = TiffFileStrip{O}(IOBuffer(data), ifd)
+
+        function go(tfs, arr, comp)
+            cls = istiled(ifd) ? tilecols(ifd) : cols
+            cls = isplanar(ifd) ? cls : cls * spp # number of samples (not pixels) per column
+            rws = fld(length(arr), cls)
+            sz = uncompressed_size(ifd, cls, rws)
+            read!(tfs, view(reinterpret(UInt8, vec(arr)), 1:sz), comp)
+            if is_irregular_bps(ifd)
+                arr .= recode(arr, rws, cls, bps)
             end
-
-            if do_parallel
-                push!(tasks, Threads.@spawn go(tfs, arr, comp))
-            else
-                go(tfs, arr, comp)
-            end
-
-            start += len
+            reverse_prediction!(tfs.ifd, arr)
         end
 
-        for task in tasks
-            wait(task)
+        if do_parallel
+            push!(tasks, Threads.@spawn go(tfs, arr, comp))
+        else
+            go(tfs, arr, comp)
         end
-    else
-        seek(tf, first(offsets))
-        read!(tf, target, compression)
+
+        start += len
+    end
+
+    for task in tasks
+        wait(task)
     end
 
     if isplanar(ifd)
@@ -365,16 +383,18 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     return ifd_end_pos
 end
 
-function reverse_prediction!(tfs::TiffFileStrip{O}, arr::AbstractArray{T,N}) where {O, T, N}
-    pred::Int = predictor(tfs.ifd)
-    # for planar data, each row of data represents a single channel
-    spp::Int = isplanar(tfs.ifd) ? 1 : nsamples(tfs.ifd)
+function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
+    pred::Int = predictor(ifd)
+    # for planar data, each "pixel" in the strip is actually a single channel
+    spp::Int = isplanar(ifd) ? 1 : nsamples(ifd)
     if pred == 2
-        columns = istiled(tfs.ifd) ? tilecols(tfs.ifd) : ncols(tfs.ifd)
-        rows = istiled(tfs.ifd) ? tilerows(tfs.ifd) : cld(length(arr), columns * spp)
+        @debug "reversing horizontal differencing"
 
+        columns = istiled(ifd) ? tilecols(ifd) : ncols(ifd)
+        rows = istiled(ifd) ? tilerows(ifd) : cld(length(arr), columns * spp)
+
+        # horizontal differencing
         GC.@preserve arr begin
-            # horizontal differencing
             temp::Ptr{T} = pointer(arr)
             for row in 1:rows
                 start = (row - 1) * columns * spp
@@ -467,6 +487,143 @@ end
             end
 
             resize!(out, length(out) - $count)
+        end
+    end
+end
+
+recode(v::AbstractVector, n::Integer) = recode(v, 1, length(v), n)
+
+recode(v::AbstractVector, c::Integer, n::Integer) = recode(v, fld(length(v), c), c, n)
+
+# recode `r` rows of `c` n-bit integers to useful word-sized integers
+recode(v::AbstractVector, r, c, n::Integer) = recode(v, r, c, Val(n))
+
+# for SIMD, must have (c % M) == 0 && (M * N) % (K * 8) == 0, where M is
+# the vector width used by the SIMD algorithm; M = 32 doesn't work for
+# {27, 29, 31} (K = 8), so we step up to the next power of two
+for N in (27, 29, 31)
+    @eval recode(v::AbstractVector, r, c, n::Val{$N}) = c % 64 == 0 ? recode_simd(v, n) : recode_slow(v, r, c, $N)
+end
+
+recode(v::AbstractVector, r, c, n::Val{N}) where N = c % 32 == 0 ? recode_simd(v, n) : recode_slow(v, r, c, N)
+
+# {AAA, ABB, BBC, CCC} => {AAAA, BBBB, CCCC}
+function recode_slow(v::AbstractVector{T}, rows::Integer, columns::Integer, n::Integer) where T
+    @debug "recoding from $n bits per sample"
+
+    vb::Vector{UInt8} = reinterpret(UInt8, vec(v))
+    out::Vector{T} = Vector{T}(undef, length(v))
+    i = 0 # input index
+    j = 0 # output index
+    # encoding is done per row, so decoding is also done per row
+    for _ in 1:rows
+        buffer::Int = 0
+        available = 0 # number of valid bits available in buffer
+        for _ in 1:columns
+            while available < n
+                buffer = (buffer << 8) | vb[i+=1]
+                available += 8
+            end
+            val = (buffer >> (available - n)) & ((1 << n) - 1)
+            out[j+=1] = T(val)
+            available -= n
+        end
+    end
+    out
+end
+
+# these are "nice" n, for which all packed n-bit integers are encoded within no more
+# than sizeof(T) bytes, where T is the smallest integer type big enough to store n bits
+const nice_n = filter(x -> !(max(nextpow(2, x), 8) - x in [0,1,2,3,5]), 1:31)
+
+# {AAA, ABB, BBC, CCC} => {AAAA, BBBB, CCCC}
+@generated function recode_simd(A::AbstractVector{T}, n::Val{N}) where {T, N}
+    nice = N in nice_n
+    TT = nice ? T : widen(T)
+    width = max(32, sizeof(TT) * 8) # SIMD vector width
+    m = fld(width * N, sizeof(TT) * 8) # input bytes per vector
+    count = fld(width, sizeof(TT)) # number of codes per vector
+
+    lp(v::AbstractVector,n) = vcat(zeros(Int, n - length(v)), v)
+
+    function shuffle(N)
+        bitrange = 0:m * 8 - 1
+        extents = extrema.(partition(bitrange, N))
+        Val(Tuple(mapreduce(y -> lp(collect(UnitRange(map(x -> fld.(x, 8), y)...)), sizeof(TT)), vcat, extents)))
+    end
+
+    function shift(N)
+        len = N * count
+        Vec(7 .- last.(extrema.(Iterators.partition(0:len-1,N))) .% 8...)
+    end
+
+    mask(N) = Vec(fill(TT(2^N - 1), count)...)
+
+    function main_block(i)
+        sym = Symbol
+        quote
+            $(sym("a", i)) = vload(Vec{$m, UInt8}, in_ptr)
+            # arrange bytes so that each TT-sized lane contains a single code (+ extra bits)
+            $(sym("b", i)) = shufflevector($(sym("a", i)), shuffle)
+            # shift out extra low-order bits
+            $(sym("c", i)) = bswap(reinterpret(Vec{$count, $TT}, $(sym("b", i)))) >> shift
+            # mask out extra high-order bits
+            $(sym("d", i)) = $(sym("c", i)) & mask
+            in_ptr += $m
+        end
+    end
+
+    function nice_block()
+        quote
+            $(main_block(1))
+
+            vstore(d1, out_ptr)
+            out_ptr += $width
+        end
+    end
+
+    function non_nice_block()
+        quote
+            $(main_block(1)) # gives d1
+            $(main_block(2)) # gives d2
+
+            # d1 and d2 come from the main_blocks
+            t1 = reinterpret(Vec{$count * 2, T}, d1)
+            t2 = reinterpret(Vec{$count * 2, T}, d2)
+
+            # shufflevector {AXBXCX...}, {DXEXFX...} => {ABC...DEF...}
+            f = shufflevector(t1, t2, shuffle2)
+
+            vstore(f, out_ptr)
+            out_ptr += $width
+        end
+    end
+
+    quote
+        @debug "recoding from $N bits per sample (SIMD, $($nice ? "nice" : "not nice"))"
+
+        # decoded integers per iteration
+        num = fld($width, sizeof(T))
+
+        @assert length(A) % num == 0
+
+        out = Vector{T}(undef, length(A))
+        GC.@preserve A out begin
+            in_ptr::Ptr{UInt8} = reinterpret(Ptr{UInt8}, pointer(A))
+            out_ptr::Ptr{T} = pointer(out)
+
+            shuffle = $(shuffle(N))
+            shift = $(shift(N))
+            mask = $(mask(N))
+
+            shuffle2 = $(Val(Tuple(0:2:count*4-1)))
+
+            iterations = fld(length(A), num)
+            for i in 1:iterations
+                $(nice ? nice_block() : non_nice_block())
+            end
+
+            out
         end
     end
 end

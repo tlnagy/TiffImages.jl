@@ -92,26 +92,6 @@ end
 
 function Base.read!(file::TiffFile, arr::AbstractArray)
     read!(stream(file.io), arr)
-    if file.need_bswap
-        arr .= bswap.(arr)
-    end
-end
-
-function Base.read!(file::TiffFile, arr::SubArray{T,N,<:BitArray}) where {T, N}
-    error("Strided bilevel TIFFs are not yet supported. Please open an issue against TiffImages.jl.")
-end
-
-function Base.read!(file::TiffFile, arr::BitArray)
-    Bc = arr.chunks
-    n = length(arr)
-    nc = length(read!(file.io, Bc))
-    if length(Bc) > 0 && Bc[end] & Base._msk_end(n) ≠ Bc[end]
-        Bc[end] &= Base._msk_end(n) # ensure that the BitArray is not broken
-    end
-    for i in 1:nc
-       Bc[i] = reversebits(Bc[i])
-    end
-    arr
 end
 
 Base.write(file::TiffFile, t) = write(file.io.io, t)::Int

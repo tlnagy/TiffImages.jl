@@ -6,6 +6,10 @@ nrows(ifd::IFD) = Int(ifd[IMAGELENGTH].data)::Int
 ncols(ifd::IFD) = Int(ifd[IMAGEWIDTH].data)::Int
 nsamples(ifd::IFD) = Int(getdata(ifd, SAMPLESPERPIXEL, 1))
 predictor(ifd::IFD) = Int(getdata(ifd, PREDICTOR, 0))
+bitspersample(ifd::IFD) = Int(first(ifd[BITSPERSAMPLE].data))::Int
+ispalette(ifd::IFD) = Int(getdata(ifd, PHOTOMETRIC, 0)) == 3
+
+is_irregular_bps(ifd::IFD) = bitspersample(ifd) != sizeof(rawtype(ifd)) * 8
 
 """
     interpretation(ifd)
@@ -62,18 +66,53 @@ interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNSPECIFIED}, ::
 interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_ASSOCALPHA}, @nospecialize(::Val)) = coloralpha(interpretation(p)), false
 interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNASSALPHA}, nsamples::Val) = interpretation(p, Val(EXTRASAMPLE_ASSOCALPHA), nsamples)
 
-_mappedtype(::Type{T}) where {T} = T
-_mappedtype(::Type{T}) where {T <: Unsigned} = Normed{T, sizeof(T) * 8}
-_mappedtype(::Type{T}) where {T <: Signed}   = Fixed{T, sizeof(T) * 8 - 1}
+_mappedtype(::Type{T}, bpp) where {T} = T
+_mappedtype(::Type{T}, bpp) where {T <: Unsigned} = Normed{T, bpp}
+_mappedtype(::Type{T}, bpp) where {T <: Signed}   = Fixed{T, bpp - 1}
 
 function rawtype(ifd::IFD)
     samplesperpixel = nsamples(ifd)
-    bitsperpixel = ifd[BITSPERSAMPLE].data
+    bitsperpixel = bitspersample(ifd)
     sampleformats = fill(UInt16(0x01), samplesperpixel)
     if SAMPLEFORMAT in ifd
         sampleformats = ifd[SAMPLEFORMAT].data
     end
-    rawtype_mapping[SampleFormats(first(sampleformats)), first(bitsperpixel)]
+
+    format = SampleFormats(first(sampleformats))
+    n = first(bitsperpixel)
+
+    n < 1 || n > 64 && error("unsupported bit depth ($n)")
+
+    if format == SAMPLEFORMAT_IEEEFP
+        if n == 16
+            rtype = Float16
+        elseif n == 32
+            rtype = Float32
+        elseif n == 64
+            rtype = Float64
+        else
+            error("unsupported sample format")
+        end
+    elseif format == SAMPLEFORMAT_UINT || format == SAMPLEFORMAT_INT
+        m = trailing_zeros(nextpow(2, n))
+        if m <= 3
+            rtype = format == SAMPLEFORMAT_UINT ? UInt8 : Int8
+        elseif m == 4
+            rtype = format == SAMPLEFORMAT_UINT ? UInt16 : Int16
+        elseif m == 5
+            rtype = format == SAMPLEFORMAT_UINT ? UInt32 : Int32
+        elseif m == 6
+            rtype = format == SAMPLEFORMAT_UINT ? UInt64 : Int64
+        else
+            error("unsupported sample format")
+        end
+    else
+        error("unsupported sample format")
+    end
+
+    @debug "raw type for ($format, $n) is $rtype"
+
+    rtype
 end
 
 """
@@ -83,15 +122,19 @@ Allocate a cache for this IFD with correct type and size.
 """
 function getcache(ifd::IFD)
     T = rawtype(ifd)
-    if T === Bool
-        return BitArray(undef, ncols(ifd), nrows(ifd))
-    end
     colortype, extras = interpretation(ifd)
+    bpp = bitspersample(ifd)
     if istiled(ifd)
         tile_width = tilecols(ifd)
         tile_height = tilerows(ifd)
-        return Array{colortype{_mappedtype(T)}}(undef, cld(ncols(ifd), tile_width) * tile_width, cld(nrows(ifd), tile_height) * tile_height)
+        return Array{colortype{_mappedtype(T, bpp)}}(undef, cld(ncols(ifd), tile_width) * tile_width, cld(nrows(ifd), tile_height) * tile_height)
     else
-        return Array{colortype{_mappedtype(T)}}(undef, ncols(ifd), nrows(ifd))
+        return Array{colortype{_mappedtype(T, bpp)}}(undef, ncols(ifd), nrows(ifd))
     end
+end
+
+function uncompressed_size(ifd::IFD, columns::Int, rows::Int)
+    bps = bitspersample(ifd)
+    # each row is encoded separately
+    cld(columns * bps, 8) * rows
 end

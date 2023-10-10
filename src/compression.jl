@@ -6,20 +6,17 @@ stream `io`, inflating the data using compression method `comp`. `read!` will
 dispatch on the value of compression and use the correct compression technique
 to read the data.
 """
-function memcpy(dest::Ptr{T}, src::Ptr{T}, n::Int) where T
-    ccall(:memcpy, Ptr{T}, (Ptr{T}, Ptr{T}, Int), dest, src, n)
-end
+Base.read!(tfs::Union{TiffFile, TiffFileStrip}, arr::AbstractVector{UInt8}, comp::CompressionType) = read!(tfs.io, arr, Val(comp))
 
-Base.read!(tfs::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, comp::CompressionType) = read!(tfs, arr, Val(comp))
+Base.read!(tfs::Union{TiffFile, TiffFileStrip}, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_NONE}) = read!(tfs.io, arr)
 
-Base.read!(tfs::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, ::Val{COMPRESSION_NONE}) = read!(tfs, arr)
+function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_PACKBITS})
+    len = length(arr)
 
-function Base.read!(tfs::TiffFileStrip, arr::AbstractArray{T, N}, ::Val{COMPRESSION_PACKBITS}) where {T, N}
     pos = 1
     nbit = Array{Int8}(undef, 1)
     nxt = Array{UInt8}(undef, 1)
-    arr = reinterpret(UInt8, arr)
-    while pos < length(arr)
+    while pos < len
         read!(tfs.io, nbit)
         n = nbit[1]
         if 0 <= n <= 127
@@ -34,22 +31,23 @@ function Base.read!(tfs::TiffFileStrip, arr::AbstractArray{T, N}, ::Val{COMPRESS
     end
 end
 
-function Base.read!(tfs::TiffFileStrip, arr::AbstractArray, ::Val{COMPRESSION_DEFLATE})
-    readbytes!(InflateZlibStream(tfs.io), reinterpret(UInt8, vec(arr)))
+function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_DEFLATE})
+    readbytes!(InflateZlibStream(tfs.io), arr)
 end
 
-function Base.read!(tfs::TiffFileStrip, arr::AbstractArray, ::Val{COMPRESSION_ADOBE_DEFLATE})
-    readbytes!(InflateZlibStream(tfs.io), reinterpret(UInt8, vec(arr)))
+function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_ADOBE_DEFLATE})
+    readbytes!(InflateZlibStream(tfs.io), arr)
 end
 
-function lzw_decode!(io, arr::AbstractArray)
+function lzw_decode!(io, arr)
     CLEAR_CODE::Int = 256 + 1
     EOI_CODE::Int = 257 + 1
     TABLE_ENTRY_LENGTH_BITS::Int = 16
 
+    output_size = length(arr)
+
     GC.@preserve arr begin
-        out_pointer::Ptr{UInt8} = reinterpret(Ptr{UInt8}, pointer(arr))
-        output_size::Int = sizeof(arr)
+        out_pointer::Ptr{UInt8} = pointer(arr)
         out_position::Int = 0 # current position in out
 
         table_size::Int = output_size * 2 + 258
@@ -211,30 +209,10 @@ function lzw_decode!(io, arr::AbstractArray)
     end
 end
 
-function Base.read!(tfs::TiffFileStrip{S}, arr::AbstractArray{T, N}, ::Val{COMPRESSION_LZW}) where {T, N, S}
+function Base.read!(tfs::TiffFileStrip{S}, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_LZW}) where S
     lzw_decode!(tfs, arr)
 end
 
-"""
-    get_inflator(x)
-
-Given a `read!` signature, returns the compression technique implemented.
-
-```jldoctest
-julia> TiffImages.get_inflator(first(methods(read!, [TiffImages.TiffFile, AbstractArray, Val{TiffImages.COMPRESSION_NONE}], [TiffImages])).sig)
-COMPRESSION_NONE::CompressionType = 1
-```
-"""
-get_inflator(::Type{Tuple{typeof(read!), TiffFileStrip, AbstractArray{T, N} where {T, N}, Val{C}}}) where C = C
-get_inflator(::Type{Tuple{typeof(read!), Union{TiffFile, TiffFileStrip{S} where S}, AbstractArray{T, N} where {T, N}, Val{C}}}) where C = C
-
-# autogenerate nice error messages for all non-implemented inflation methods
-implemented = map(x->get_inflator(x.sig), methods(read!, [Union{TiffFile, TiffFileStrip}, AbstractArray, Val], ))
-comps = Set(instances(CompressionType))
-setdiff!(comps, implemented)
-
-for comp in comps
-    eval(quote
-        Base.read!(io::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, ::Val{$comp}) = error("Compression ", $comp, " is not implemented. Please open an issue against TiffImages.jl.")
-    end)
+function Base.read!(T, A, ::Val{C}) where C
+    error("Compression $C is not implemented. Please open an issue against TiffImages.jl.")
 end
