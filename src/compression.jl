@@ -17,7 +17,8 @@ Base.read!(io::Union{TiffFile, TiffFileStrip}, arr::AbstractArray, ::Val{COMPRES
 function Base.read!(tfs::TiffFileStrip, arr::AbstractArray{T, N}, ::Val{COMPRESSION_PACKBITS}) where {T, N}
     pos = 1
     nbit = Array{Int8}(undef, 1)
-    nxt = Array{T}(undef, 1)
+    nxt = Array{UInt8}(undef, 1)
+    arr = reinterpret(UInt8, arr)
     while pos < length(arr)
         read!(tfs.tf, nbit)
         n = nbit[1]
