@@ -220,7 +220,7 @@ struct TiffFileStrip{O, T}
     ifd::IFD{O}
 end
 
-Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = read!(tfs.io, arr)
+Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = _read!(tfs.io, arr)
 Base.bytesavailable(tfs::TiffFileStrip) = bytesavailable(tfs.io)
 
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}) where {T, N, O, S}
