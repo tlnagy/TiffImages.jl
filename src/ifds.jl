@@ -332,15 +332,17 @@ function reverse_prediction!(tfs::TiffFileStrip{O, S, P}, arr::AbstractArray{T, 
         rows = istiled(tfs.ifd) ? tilerows(tfs.ifd) : cld(length(arr), columns)
 
         # horizontal differencing
-        temp::Ptr{P} = reinterpret(Ptr{P}, pointer(arr))
-        for row in 1:rows
-            start = (row - 1) * columns * spp
-            for plane in 1:spp
-                previous::P = unsafe_load(temp, start + plane)
-                for i in (spp + plane):spp:(columns - 1) * spp + plane
-                    current = unsafe_load(temp, start + i) + previous
-                    unsafe_store!(temp, current, start + i)
-                    previous = current
+        GC.@preserve arr begin
+            temp::Ptr{P} = reinterpret(Ptr{P}, pointer(arr))
+            for row in 1:rows
+                start = (row - 1) * columns * spp
+                for plane in 1:spp
+                    previous::P = unsafe_load(temp, start + plane)
+                    for i in (spp + plane):spp:(columns - 1) * spp + plane
+                        current = unsafe_load(temp, start + i) + previous
+                        unsafe_store!(temp, current, start + i)
+                        previous = current
+                    end
                 end
             end
         end
