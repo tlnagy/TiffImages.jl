@@ -93,8 +93,8 @@ function lzw_decode!(io, arr::AbstractArray)
                 (buffer, code + 1, old_code, bitcount, codesize, i)
             end
 
-            @inline check_table_overflow(start, length) = start + length > table_size && @error "LZW: table buffer overflow"
-            @inline check_output_overflow(start, length) = start + length > output_size && @error "LZW: output buffer overflow"
+            @inline check_table_overflow(start, length) = start + length > table_size && error("LZW: table buffer overflow")
+            @inline check_output_overflow(start, length) = start + length > output_size && error("LZW: output buffer overflow")
 
             # annotated with excerpts from the LZW pseudocode in the TIFF 6.0 spec
             # https://developer.adobe.com/content/dam/udp/en/open/standards/tiff/TIFF6.pdf
