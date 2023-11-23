@@ -36,6 +36,7 @@ Base.reinterpret(::Type{Palette{T}}, arr::A) where {T, N, S, A <: AbstractArray{
 interpretation(p::PhotometricInterpretations) = interpretation(Val(p))
 interpretation(::Val{PHOTOMETRIC_RGB}) = RGB
 interpretation(::Val{PHOTOMETRIC_MINISBLACK}) = Gray
+interpretation(::Val{PHOTOMETRIC_MINISWHITE}) = Gray
 interpretation(::Val{PHOTOMETRIC_PALETTE}) = Palette
 interpretation(::Val{PHOTOMETRIC_YCBCR}) = YCbCr
 interpretation(::Val{PHOTOMETRIC_CIELAB}) = Lab
