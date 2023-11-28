@@ -212,17 +212,16 @@ pixels in the image
 
 $(FIELDS)
 """
-struct TiffFileStrip{O, S, P}
-    """The file stream"""
-    tf::TiffFile{O, S}
+struct TiffFileStrip{O, T}
+    """Strip data"""
+    io::IOBuffer
+
     """The IFD corresponding to this strip"""
     ifd::IFD{O}
-    """The number of bytes in this strip"""
-    bytes::Int
 end
 
-Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = read!(tfs.tf, arr)
-Base.bytesavailable(tfs::TiffFileStrip) = tfs.bytes
+Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = _read!(tfs.io, arr)
+Base.bytesavailable(tfs::TiffFileStrip) = bytesavailable(tfs.io)
 
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}) where {T, N, O, S}
     if PLANARCONFIG in ifd
@@ -237,11 +236,12 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
         # number of input bytes in each strip or tile
         encoded_bytes = istiled(ifd) ? ifd[TILEBYTECOUNTS].data : ifd[STRIPBYTECOUNTS].data
 
+        rows = nrows(ifd)
+        cols = ncols(ifd)
+
         if istiled(ifd)
             strip_pixels = map(_ -> tilecols(ifd) * tilerows(ifd), encoded_bytes)
         else
-            rows = nrows(ifd)
-            cols = ncols(ifd)
             nstrips = length(encoded_bytes)
             rowsperstrip = getdata(Int, ifd, ROWSPERSTRIP, rows)
 
@@ -251,16 +251,36 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
             @assert sum(strip_pixels) == rows * cols
         end
 
+        parallel_enabled = something(tryparse(Bool, get(ENV, "JULIA_IMAGES_PARALLEL", "1")), false)
+        do_parallel = parallel_enabled && rows * cols > 250_000 # pixels
+
         start = 1
         comp = Val(compression)
         rtype = rawtype(ifd)
+        tasks::Vector{Task} = []
         for (offset, len, bytes) in zip(offsets, strip_pixels, encoded_bytes)
             seek(tf, offset)
-            tfs = TiffFileStrip{O, S, rtype}(tf, ifd, bytes)
             arr = view(target, start:(start+len-1))
-            read!(tfs, arr, comp)
-            reverse_prediction!(tfs, arr)
+            data = Vector{UInt8}(undef, bytes)
+            read!(tf, data)
+            tfs = TiffFileStrip{O, rtype}(IOBuffer(data), ifd)
+
+            function go(tfs, arr, comp)
+                read!(tfs, arr, comp)
+                reverse_prediction!(tfs, arr)
+            end
+
+            if do_parallel
+                push!(tasks, Threads.@spawn go(tfs, arr, comp))
+            else
+                go(tfs, arr, comp)
+            end
+
             start += len
+        end
+
+        for task in tasks
+            wait(task)
         end
     else
         seek(tf, first(offsets))
@@ -324,7 +344,7 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     return ifd_end_pos
 end
 
-function reverse_prediction!(tfs::TiffFileStrip{O, S, P}, arr::AbstractArray{T, N}) where {O, S, P, T, N}
+function reverse_prediction!(tfs::TiffFileStrip{O, P}, arr::AbstractArray{T,N}) where {O, P, T, N}
     pred::Int = predictor(tfs.ifd)
     spp::Int = nsamples(tfs.ifd)
     if pred == 2

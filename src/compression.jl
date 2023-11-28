@@ -20,13 +20,13 @@ function Base.read!(tfs::TiffFileStrip, arr::AbstractArray{T, N}, ::Val{COMPRESS
     nxt = Array{UInt8}(undef, 1)
     arr = reinterpret(UInt8, arr)
     while pos < length(arr)
-        read!(tfs.tf, nbit)
+        read!(tfs.io, nbit)
         n = nbit[1]
         if 0 <= n <= 127
-            read!(tfs.tf, view(arr, pos:pos+n))
+            _read!(tfs.io, view(arr, pos:pos+n))
             pos += n
         elseif -127 <= n <= -1
-            read!(tfs.tf, nxt)
+            read!(tfs.io, nxt)
             arr[pos:(pos-n)] .= nxt[1]
             pos += -n
         end
@@ -35,11 +35,11 @@ function Base.read!(tfs::TiffFileStrip, arr::AbstractArray{T, N}, ::Val{COMPRESS
 end
 
 function Base.read!(tfs::TiffFileStrip, arr::AbstractArray, ::Val{COMPRESSION_DEFLATE})
-    readbytes!(InflateZlibStream(tfs.tf.io.io), reinterpret(UInt8, vec(arr)))
+    readbytes!(InflateZlibStream(tfs.io), reinterpret(UInt8, vec(arr)))
 end
 
 function Base.read!(tfs::TiffFileStrip, arr::AbstractArray, ::Val{COMPRESSION_ADOBE_DEFLATE})
-    readbytes!(InflateZlibStream(tfs.tf.io.io), reinterpret(UInt8, vec(arr)))
+    readbytes!(InflateZlibStream(tfs.io), reinterpret(UInt8, vec(arr)))
 end
 
 function lzw_decode!(io, arr::AbstractArray)
