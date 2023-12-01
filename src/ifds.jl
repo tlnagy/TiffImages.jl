@@ -214,7 +214,7 @@ pixels in the image
 
 $(FIELDS)
 """
-struct TiffFileStrip{O, T}
+struct TiffFileStrip{O}
     """Strip data"""
     io::IOBuffer
 
@@ -276,7 +276,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
             arr = view(samples, start:(start+len-1))
             data = Vector{UInt8}(undef, bytes)
             read!(tf, data)
-            tfs = TiffFileStrip{O, rtype}(IOBuffer(data), ifd)
+            tfs = TiffFileStrip{O}(IOBuffer(data), ifd)
 
             function go(tfs, arr, comp)
                 read!(tfs, arr, comp)
