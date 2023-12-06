@@ -208,21 +208,3 @@ getstream(io) = getstream(format"TIFF", io)
 else
     const _safe_open = open
 end
-
-if VERSION >= v"1.4"
-    _read!(s::IO, a::AbstractArray) = read!(s, a)
-elseif VERSION >= v"1.3"
-    # copied from https://github.com/JuliaLang/julia/pull/33046
-    function _read!(s::IO, a::AbstractArray{T}) where T
-        if isbitstype(T) && (a isa Array || a isa Base.FastContiguousSubArray{T,<:Any,<:Array{T}})
-            GC.@preserve a unsafe_read(s, pointer(a), sizeof(a))
-        else
-            for i in eachindex(a)
-                a[i] = read(s, T)
-            end
-        end
-        return a
-    end
-else
-    error("Julia 1.3+ is required.")
-end

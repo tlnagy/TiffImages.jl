@@ -23,7 +23,7 @@ function Base.read!(tfs::TiffFileStrip, arr::AbstractArray{T, N}, ::Val{COMPRESS
         read!(tfs.io, nbit)
         n = nbit[1]
         if 0 <= n <= 127
-            _read!(tfs.io, view(arr, pos:pos+n))
+            read!(tfs.io, view(arr, pos:pos+n))
             pos += n
         elseif -127 <= n <= -1
             read!(tfs.io, nxt)

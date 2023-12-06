@@ -8,19 +8,13 @@ using Statistics
 using Test
 using TiffImages
 
-if VERSION >= v"1.4"
-    DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
-    doctest(TiffImages)
-end
+DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
+doctest(TiffImages)
 
 _wrap(name) = "https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true"
 
-if VERSION >= v"1.6.0"
-    using Downloads
-    get_example(x) = Downloads.download(_wrap(x))
-else
-    get_example(x) = download(_wrap(x))
-end
+using Downloads
+get_example(x) = Downloads.download(_wrap(x))
 
 @testset "Tag loading" begin
     include("tags.jl")
