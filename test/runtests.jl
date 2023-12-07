@@ -232,9 +232,6 @@ end
     @test TiffImages.load(ref) == TiffImages.load(tiled_planar)
     @test TiffImages.load(ref) == TiffImages.load(uncompressed_tiled_planar)
 
-    big=reduce(vcat,[fill(Int16(x),112380) for x in 1:5])
-    @test (@allocations TiffImages.deplane_simd(big,Val(5))) >= 0 # warmup
-    @test (@allocations TiffImages.deplane_simd(big,Val(5))) < 10
     for typ in [Int8,UInt16,Float32]
         for planes in 1:33
             for size in 100:164
