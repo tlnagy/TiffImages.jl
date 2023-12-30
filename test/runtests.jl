@@ -222,3 +222,31 @@ end
     compressed_tiled = get_example("shapes_lzw_tiled.tif")
     @test TiffImages.load(uncompressed) == TiffImages.load(compressed_tiled)
 end
+
+@testset "Planar" begin
+    ref = get_example("shapes_uncompressed.tif")
+    planar = get_example("shapes_lzw_planar.tif")
+    tiled_planar = get_example("shapes_lzw_tiled_planar.tif")
+    uncompressed_tiled_planar = get_example("shapes_uncompressed_tiled_planar.tif")
+    @test TiffImages.load(ref) == TiffImages.load(planar)
+    @test TiffImages.load(ref) == TiffImages.load(tiled_planar)
+    @test TiffImages.load(ref) == TiffImages.load(uncompressed_tiled_planar)
+
+    for typ in [Int8,UInt16,Float32]
+        for planes in 1:33
+            for size in 100:164
+                a=reduce(vcat,[fill(typ(x),size) for x in 1:planes])
+                @test TiffImages.deplane_simd(a, Val(planes)) == TiffImages.deplane_slow(a, planes)
+            end
+        end
+    end
+
+    for typ in [Int8,UInt16,Float32]
+        for planes in 1:33
+            for size in 100:164
+                a=reduce(vcat,[fill(typ(x),size) for x in 1:planes])
+                @test TiffImages.deplane(a, planes) == TiffImages.deplane_slow(a, planes)
+            end
+        end
+    end
+end

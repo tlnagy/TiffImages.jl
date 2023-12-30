@@ -17,6 +17,7 @@ using Base.Iterators
 using Inflate
 using UUIDs
 using Mmap
+using SIMD
 
 const PKGVERSION = @PkgVersion.Version 0
 

@@ -1,9 +1,9 @@
 istiled(ifd::IFD) = TILEWIDTH in ifd
+isplanar(ifd::IFD) = Int(getdata(ifd, PLANARCONFIG, 1)) == 2
 tilecols(ifd::IFD) = Int(ifd[TILEWIDTH].data)::Int
 tilerows(ifd::IFD) = Int(ifd[TILELENGTH].data)::Int
 nrows(ifd::IFD) = Int(ifd[IMAGELENGTH].data)::Int
 ncols(ifd::IFD) = Int(ifd[IMAGEWIDTH].data)::Int
-ntiles(ifd) = Int(length(ifd[TILEOFFSETS]))::Int
 nsamples(ifd::IFD) = Int(getdata(ifd, SAMPLESPERPIXEL, 1))
 predictor(ifd::IFD) = Int(getdata(ifd, PREDICTOR, 0))
 

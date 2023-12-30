@@ -15,6 +15,7 @@ Mmap = "a63ad114-7e13-5084-954f-fe012c677804"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 PkgVersion = "eebad327-c553-4316-9ea0-9fa01ccd7688"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+SIMD = "fdea26ae-647d-5447-a871-4b548cad5224"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
@@ -28,4 +29,5 @@ Inflate = "0.1.4"
 OffsetArrays = "1"
 PkgVersion = "0.1.1, 0.3"
 ProgressMeter = "1"
+SIMD = "3.4.5"
 julia = "1.6"
