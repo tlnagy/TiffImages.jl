@@ -226,7 +226,7 @@ Base.read!(tfs::TiffFileStrip, arr::AbstractArray) = read!(tfs.io, arr)
 Base.bytesavailable(tfs::TiffFileStrip) = bytesavailable(tfs.io)
 
 function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}) where {T, N, O, S}
-    offsets = istiled(ifd) ? ifd[TILEOFFSETS].data : ifd[STRIPOFFSETS].data
+    offsets = TILEOFFSETS in ifd ? ifd[TILEOFFSETS].data : ifd[STRIPOFFSETS].data
     compression = getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE)
 
     rtype = rawtype(ifd)
@@ -239,7 +239,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
     @debug "reading $(cmprssn), $(istiled(ifd) ? "tiled" : "striped"), $(isplanar(ifd) ? "planar" : "chunky") image"
 
     # number of input bytes in each strip or tile
-    encoded_bytes = istiled(ifd) ? ifd[TILEBYTECOUNTS].data : ifd[STRIPBYTECOUNTS].data
+    encoded_bytes = TILEBYTECOUNTS in ifd ? ifd[TILEBYTECOUNTS].data : ifd[STRIPBYTECOUNTS].data
 
     # number of samples (pixels * channels) in each strip or tile
     strip_samples::Vector{Int} = []
