@@ -383,6 +383,9 @@ function Base.write(tf::TiffFile{O}, ifd::IFD{O}) where {O <: Unsigned}
     return ifd_end_pos
 end
 
+# reverse any pre-processing that might have been applied to sample
+# values prior to compression
+# https://www.awaresystems.be/imaging/tiff/tifftags/predictor.html
 function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
     pred::Int = predictor(ifd)
     # for planar data, each "pixel" in the strip is actually a single channel
