@@ -64,8 +64,9 @@ end
 function MmappedTIFF(file::TiffFile{O}, ifds::Vector{IFD{O}}) where {O <: Unsigned}
     ifd = first(ifds)
     T = rawtype(ifd)
+    bpp = bitspersample(ifd)
     colortype, _ = interpretation(ifd)
-    return MmappedTIFF{colortype{_mappedtype(T)}}(file, ifds)
+    return MmappedTIFF{colortype{_mappedtype(T, bpp)}}(file, ifds)
 end
 
 function getchunk(::Type{T}, raw::Vector{UInt8}, sz::Dims{2}, ifd::IFD) where T

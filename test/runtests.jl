@@ -109,7 +109,7 @@ end
     filepath = get_example("capitol.tif")
     img = TiffImages.load(filepath)
     @test size(img) == (378, 504)
-    @test eltype(img) == Gray{Bool}
+    @test eltype(img) == Gray{N7f1}
     
     # Efficient convert method
     img_cvt = convert(Array{eltype(img), ndims(img)}, img)
@@ -120,7 +120,7 @@ end
     filepath = get_example("capitol2.tif")
     img = TiffImages.load(filepath)
     @test size(img) == (378, 504)
-    @test eltype(img) == Gray{Bool}
+    @test eltype(img) == Gray{N7f1}
 
     # Efficient convert method
     img_cvt = convert(Array{eltype(img), ndims(img)}, img)
@@ -249,4 +249,56 @@ end
             end
         end
     end
+end
+
+if VERSION < v"1.7"
+    partition(s::String, n) = map(xs -> reduce(*, xs), Iterators.partition(s, n))
+else
+    partition = Iterators.partition
+end
+
+@testset "Arbitrary Bit Depth" begin
+    ref = TiffImages.load(get_example("shapes_uncompressed.tif"))
+    other = TiffImages.load(get_example("shapes_lzw_12bps.tif"))
+    m = sum(ref.data .- other.data) ./ length(ref)
+    @test m.r < 0.001 && m.g < 0.001 && m.b < 0.001
+
+    other = TiffImages.load(get_example("shapes_lzw_14bps.tif"))
+    m = sum(ref.data .- other.data) ./ length(ref)
+    @test m.r < 0.001 && m.g < 0.001 && m.b < 0.001
+
+    xs = [rand(UInt8) & 0x7f for _ in 1:160];
+    bytes = parse.(UInt8, partition(reduce(*,string.(xs; base=2, pad=7)),8); base=2)
+    resize!(bytes, fld(length(bytes) * 8, 7))
+    recoded = TiffImages.recode_simd(bytes, Val(7))
+
+    @test xs == recoded
+
+    xs = [rand(UInt32) & 0x1fffffff for _ in 1:256];
+    bytes = parse.(UInt8, partition(reduce(*,string.(xs; base=2, pad=29)),8); base=2)
+    resize!(bytes, fld(length(bytes) * 32, 29))
+    recoded = TiffImages.recode_simd(reinterpret(UInt32, bytes), Val(29))
+
+    @test xs == recoded
+
+    xs = [rand(UInt8) & 0x0f for _ in 1:128];
+    bytes = parse.(UInt8, partition(reduce(*,string.(xs; base=2, pad=4)),8); base=2)
+    resize!(bytes, fld(length(bytes) * 8, 4))
+    recoded = TiffImages.recode_simd(bytes, Val(4))
+
+    @test xs == recoded
+
+    xs = [rand(UInt16) & 0x1ff for _ in 1:124];
+    bytes = parse.(UInt8, partition(rpad(reduce(*,string.(xs; base=2, pad=9)), cld(124 * 9, 8) * 8, '0'),8); base=2)
+    resize!(bytes, fld(length(bytes) * 16, 9))
+    recoded = TiffImages.recode_slow(reinterpret(UInt16, bytes), 1, 124, 9)
+
+    @test xs == recoded
+
+    xs = [rand(UInt32) & 0x7ffffff for _ in 1:124];
+    bytes = parse.(UInt8, partition(rpad(reduce(*,string.(xs; base=2, pad=27)), cld(124 * 27, 8) * 8, '0'),8); base=2)
+    resize!(bytes, fld(length(bytes) * 32, 27))
+    recoded = TiffImages.recode(reinterpret(UInt32, bytes), 27)
+
+    @test xs == recoded
 end
