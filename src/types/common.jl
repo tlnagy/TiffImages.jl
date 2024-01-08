@@ -4,6 +4,8 @@ abstract type AbstractDenseTIFF{T, N} <: AbstractTIFF{T, N} end
 
 abstract type AbstractStridedTIFF{T, N} <: AbstractTIFF{T, N} end
 
+const ColorOrTuple = Union{WidePixel, Colorant}
+
 function Base.getproperty(img::T, sym::Symbol) where {T <: AbstractTIFF}
     if sym === :ifds
         Base.depwarn("Directly accessing the ifds property is deprecated" * 
@@ -25,25 +27,93 @@ ifds(img::I) where {I <: AbstractTIFF{T, 2} where {T}} = first(getfield(img, :if
 ifds(img::I) where {I <: AbstractTIFF} = getfield(img, :ifds)
 
 interpretation(img::AbstractArray) = interpretation(eltype(img))
+interpretation(::Type{WidePixel{C, X}}) where {C, X} = interpretation(C)
 interpretation(::Type{T}) where {T <: Gray} = PHOTOMETRIC_MINISBLACK
 interpretation(::Type{T}) where {T <: AbstractRGB} = PHOTOMETRIC_RGB
 interpretation(::Type{<: TransparentColor{C, T, N}}) where {C, T, N} = interpretation(C)
+interpretation(::Type) = PHOTOMETRIC_MINISBLACK
 
 samplesperpixel(img::AbstractArray) = samplesperpixel(eltype(img))
 samplesperpixel(::Type{<: Colorant{T, N}}) where {T, N} = N
+samplesperpixel(t::Type{<: WidePixel{C, X}}) where {C, X} = samplesperpixel(C) + length(fieldnames(X))
 
 bitspersample(img::AbstractArray) = bitspersample(eltype(img))
-bitspersample(::Type{<: Colorant{T, N}}) where {T, N} = sizeof(T) * 8
-bitspersample(::Type{<: Colorant{<: Normed{T, S}, N}}) where {T, S, N} = S
-bitspersample(::Type{<: Colorant{<: Fixed{T, S}, N}}) where {T, S, N} = S + 1
+bitspersample(T::Type{<: WidePixel}) = collect(flatten(bitspersample.(fieldtypes(T))))
+bitspersample(T::Type{<: Colorant}) = collect(bitspersample.(fieldtypes(T)))
+bitspersample(T::Type{<: Tuple}) = collect(bitspersample.(fieldtypes(T)))
+bitspersample(::Type{<: Normed{T, S}}) where {T, S} = S
+bitspersample(::Type{<: Fixed{T, S}}) where {T, S} = S + 1
+bitspersample(::Type{T}) where T = sizeof(T) * 8
 
 sampleformat(img::AbstractArray) = sampleformat(eltype(img))
-sampleformat(::Type{<: Colorant{T, N}}) where {T <: AbstractFloat, N} = SAMPLEFORMAT_IEEEFP
-sampleformat(::Type{<: Colorant{<: Normed{T, S}, N}}) where {T, N, S} = SAMPLEFORMAT_UINT
-sampleformat(::Type{<: Colorant{<: Fixed{T, S}, N}}) where {T, N, S} = SAMPLEFORMAT_INT
-sampleformat(::Type{<: Colorant{Complex{T}, N}}) where {T <: AbstractFloat, N} = SAMPLEFORMAT_COMPLEXIEEEFP
-sampleformat(::Type{<: Colorant{Complex{T}, N}}) where {T <: Signed, N} = SAMPLEFORMAT_COMPLEXINT
+sampleformat(T::Type{<: WidePixel}) = collect(flatten(sampleformat.(fieldtypes(T))))
+sampleformat(T::Type{<: Colorant}) = collect(sampleformat.(fieldtypes(T)))
+sampleformat(T::Type{<: Tuple}) = collect(sampleformat.(fieldtypes(T)))
+sampleformat(::Type{<: Normed{T, S}}) where {T, S} = 1
+sampleformat(::Type{<: Fixed{T, S}}) where {T, S} = 2
+sampleformat(::Type{T}) where T <: AbstractFloat = 3
+sampleformat(::Type{Complex{T}}) where T <: Signed = 5
+sampleformat(::Type{Complex{T}}) where T <: AbstractFloat = 6
 
 extrasamples(img::AbstractArray) = extrasamples(eltype(img))
-extrasamples(img::Type) = nothing
+extrasamples(T::Type{WidePixel{C, X}}) where {C <: TransparentColor, X} = vcat([1], fill(0, length(fieldtypes(X))))
+extrasamples(T::Type{WidePixel{C, X}}) where {C, X} = fill(0, length(fieldtypes(X)))
+extrasamples(::Type) = nothing
 extrasamples(img::Type{<: TransparentColor}) = 1
+
+"""
+    channel(img, i)
+
+Get the `i`'th channel of data from `img`
+
+For example, `channel(img, 2)` would yield the green channel
+of an RGB image, or the (unlabeled) second channel of a multispectral
+image
+"""
+channel(img::AbstractArray, i::Int) = channel.(img, i)
+channel(x, i) = getfield(x, i)
+channel(x::WidePixel, i) = i <= length(x.color) ? getfield(x.color, i) : x.extra[i - length(x.color)]
+
+_length(x) = length(x)
+_length(T::Type{<: Tuple}) = length(fieldnames(T))
+
+"""
+
+    nchannels(img::AbstractTIFF)
+
+Return the number of channels in each pixel
+
+For example, an image with RGB pixels has 3 channels
+"""
+nchannels(img::AbstractTIFF) = nchannels(eltype(img))
+nchannels(x) = _length(x)
+nchannels(::Type{WidePixel{C,X}}) where {C, X} = _length(C) + _length(X)
+nchannels(::WidePixel{C,X}) where {C, X} = _length(C) + _length(X)
+
+"""
+    color(img::AbstractTIFF{ <: WidePixel})
+
+Extract the color channels from multispectral image `img`
+"""
+color(img::T) where {T <: AbstractTIFF{<: WidePixel}} = color.(img)
+
+"""
+    color(img::AbstractTIFF)
+
+This is an identity relation that just returns `img`
+"""
+color(img::AbstractTIFF) = img
+
+"""
+    color(x::WidePixel)
+
+Return the value of the `color` field of `x`
+"""
+color(x::WidePixel) = x.color
+
+"""
+    color(x::Colorant)
+
+This is an identity relation that just returns `x`
+"""
+color(x::Colorant) = x

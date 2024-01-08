@@ -23,7 +23,7 @@ Fields:
 
 $(FIELDS)
 """
-struct MmappedTIFF{T <: Colorant, N, O <: Unsigned, A <: AbstractMatrix{T}} <: AbstractTIFF{T, N}
+struct MmappedTIFF{T <: ColorOrTuple, N, O <: Unsigned, A <: AbstractMatrix{T}} <: AbstractTIFF{T, N}
     """
     2d slices in the file
     """
@@ -63,10 +63,8 @@ end
 
 function MmappedTIFF(file::TiffFile{O}, ifds::Vector{IFD{O}}) where {O <: Unsigned}
     ifd = first(ifds)
-    T = rawtype(ifd)
-    bps = bitspersample(ifd)
-    colortype, _ = interpretation(ifd)
-    return MmappedTIFF{colortype{_mappedtype(T, bps)}}(file, ifds)
+    pixeltype = interpretation(ifd)
+    return MmappedTIFF{pixeltype}(file, ifds)
 end
 
 function getchunk(::Type{T}, raw::Vector{UInt8}, sz::Dims{2}, ifd::IFD) where T
