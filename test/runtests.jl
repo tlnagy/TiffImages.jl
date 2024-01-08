@@ -320,3 +320,20 @@ end
     im = get_example("earthlab.tif")
     @test size(TiffImages.load(im)) == (2400, 2400) # no error
 end
+
+@testset "Ragged" begin
+    original = TiffImages.load(get_example("shapes_uncompressed.tif"))
+    half = TiffImages.load(get_example("shapes_uncompressed_half.tif"))
+    palette = TiffImages.load(get_example("shapes_lzw_palette.tif"))
+    multisize = TiffImages.load(get_example("shapes_multi_size.tif"))
+    multicolor = TiffImages.load(get_example("shapes_multi_color.tif"))
+
+    @test original == multisize[1]
+    @test half == multisize[2]
+
+    @test original == multicolor[1]
+    @test palette == multicolor[2]
+    @test original == multicolor[3]
+    @test sum(convert.(Float64, reinterpret(N0f8, original)) .- convert.(Float64, reinterpret(N4f12, multicolor[4]))) ./ (216*128) < 0.0001
+    @test original == multicolor[5]
+end

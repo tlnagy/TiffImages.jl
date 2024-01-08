@@ -9,9 +9,17 @@ predictor(ifd::IFD) = Int(getdata(ifd, PREDICTOR, 0))
 bitspersample(ifd::IFD) = Int(first(ifd[BITSPERSAMPLE].data))::Int
 ispalette(ifd::IFD) = Int(getdata(ifd, PHOTOMETRIC, 0)) == 3
 compression(ifd::IFD) = getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE)
+colortype(ifd::IFD) =  first(interpretation(ifd)){_mappedtype(rawtype(ifd), bitspersample(ifd))}
 
 is_irregular_bps(ifd::IFD) = bitspersample(ifd) != sizeof(rawtype(ifd)) * 8
 is_complicated(ifd::IFD) = !iscontiguous(ifd) || compression(ifd) != COMPRESSION_NONE || is_irregular_bps(ifd) == true || predictor(ifd) > 1
+
+# returns true if all slices have the same size and color type
+function is_homogeneous(ifds::Vector{<:IFD})
+    return all(map(==(nrows(first(ifds))), nrows.(ifds))) &&
+        all(map(==(ncols(first(ifds))), ncols.(ifds))) &&
+        all(map(==(colortype(first(ifds))), colortype.(ifds)))
+end
 
 """
     interpretation(ifd)
@@ -123,15 +131,13 @@ end
 Allocate a cache for this IFD with correct type and size.
 """
 function getcache(ifd::IFD)
-    T = rawtype(ifd)
-    colortype, extras = interpretation(ifd)
-    bps = bitspersample(ifd)
+    ctype = colortype(ifd)
     if istiled(ifd)
         tile_width = tilecols(ifd)
         tile_height = tilerows(ifd)
-        return Array{colortype{_mappedtype(T, bps)}}(undef, cld(ncols(ifd), tile_width) * tile_width, cld(nrows(ifd), tile_height) * tile_height)
+        return Array{ctype}(undef, cld(ncols(ifd), tile_width) * tile_width, cld(nrows(ifd), tile_height) * tile_height)
     else
-        return Array{colortype{_mappedtype(T, bps)}}(undef, ncols(ifd), nrows(ifd))
+        return Array{ctype}(undef, ncols(ifd), nrows(ifd))
     end
 end
 
