@@ -11,6 +11,9 @@ defer loading until the data are needed (by either of two mechanisms).
 Parallelism is enabled by default, but can be disabled by setting
 `JULIA_IMAGES_PARALLEL`=false in your environment
 
+Loading images with a large number of channels may result in a noticeable delay
+on the first load (up to several minutes for hundreds or thousands of channels)
+
 See [Lazy TIFFs](@ref) for more details about memory-mapping and lazy I/O.
 """
 function load(filepath::String; mode = "r", kwargs...)
@@ -91,7 +94,8 @@ end
 
 function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, ::Nothing; verbose = true)
     ifd = first(ifds)
-    cache = getcache(ifd)
+
+    cache = _getcache(ifd)
     read!(cache, tf, ifd)
     Matrix(transform(cache, ifd))
 end
@@ -99,7 +103,7 @@ end
 function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N, homogeneous::Val{true}; verbose = true)
     ifd = first(ifds)
 
-    cache = getcache(ifd)
+    cache = _getcache(ifd)
 
     data = similar(cache, nrows(ifd), ncols(ifd), N)
 
@@ -115,12 +119,21 @@ function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N, homogeneous::Val{fal
     data = Vector{AbstractMatrix}()
 
     @showprogress desc="Loading:" enabled=verbose for (idx, ifd) in enumerate(ifds)
-        cache = getcache(ifd)
+        cache = _getcache(ifd)
         read!(cache, tf, ifd)
         push!(data, transform(cache, ifd))
     end
 
     return data
+end
+
+function _getcache(ifd)
+    spp = nsamples(ifd)
+    if spp > 100
+        @info "loading image with $spp channels; this may take up to a few minutes"
+    end
+
+    getcache(ifd)
 end
 
 transform(cache, ifd) = istiled(ifd) ? tile(cache, ifd) : cache'
