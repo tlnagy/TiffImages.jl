@@ -15,7 +15,9 @@ written in Julia.
 - Extensible core for other TIFF packages to build on
 - Native integration with `Colors.jl` and the Julia Array ecosystem
 - Memory-mapping for loading images too large to fit in memory
-- Support for BigTIFFs for large images
+- BigTIFF standard (TIFFs larger than 4 GB)
+- Arbitrary bit depths (e.g. 12 or 14 bit cameras)
+- Common compression algorithms like LZW and Packbits
 
 ## Installation
 

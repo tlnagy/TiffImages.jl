@@ -21,8 +21,10 @@ TiffImages.jl supports:
 - The TIFF 6.0 baseline spec
 - Thorough testing
 - HDR images stored as 32bit or 64bit floats
-- BigTIFFs
+- BigTIFF standard (TIFFs larger than 4 GB)
 - Memory-mapped and lazy loading/writing
+- Arbitrary bit depths (e.g. 12 or 14 bit cameras)
+- Common compression algorithms like LZW and Packbits
 
 ## Usage
 
