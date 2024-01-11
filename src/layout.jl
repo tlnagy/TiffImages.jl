@@ -8,8 +8,10 @@ nsamples(ifd::IFD) = Int(getdata(ifd, SAMPLESPERPIXEL, 1))
 predictor(ifd::IFD) = Int(getdata(ifd, PREDICTOR, 0))
 bitspersample(ifd::IFD) = Int(first(ifd[BITSPERSAMPLE].data))::Int
 ispalette(ifd::IFD) = Int(getdata(ifd, PHOTOMETRIC, 0)) == 3
+compression(ifd::IFD) = getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE)
 
 is_irregular_bps(ifd::IFD) = bitspersample(ifd) != sizeof(rawtype(ifd)) * 8
+is_complicated(ifd::IFD) = !iscontiguous(ifd) || compression(ifd) != COMPRESSION_NONE || is_irregular_bps(ifd) == true || predictor(ifd) > 1
 
 """
     interpretation(ifd)
