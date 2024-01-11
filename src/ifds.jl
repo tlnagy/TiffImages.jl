@@ -327,10 +327,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
 
     if isplanar(ifd)
         samplesv = vec(samples)
-        temp = deplane(samplesv, spp)
-        GC.@preserve samplesv temp target begin
-            memcpy(pointer(samplesv), pointer(temp), sizeof(target))
-        end
+        deplane!(samplesv, spp)
     end
 end
 
@@ -435,8 +432,7 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
                     end
                 end
                 vw = view(reinterpret(UInt8, arr), start+1:start+columns)
-                deplane_simd!(buffer, vw, Val(sizeof(T)))
-                vw .= buffer
+                deplane!(buffer, vw, sizeof(T))
             end
 
             arr .= bswap.(arr)
@@ -444,10 +440,29 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
     end
 end
 
-function deplane(arr::AbstractVector{T}, n::Integer) where T
+# {AAA...BBB...CCC...} => {ABCABCABC...}
+function deplane!(arr::AbstractVector{T}, n::Integer) where T
     out = Vector{T}(undef, length(arr))
-    deplane_simd!(out, arr, Val(n))
-    out
+    deplane!(out, arr, n)
+end
+
+# {AAA...BBB...CCC...} => {ABCABCABC...}
+function deplane!(buffer::AbstractVector{T}, arr::AbstractVector{T}, n::Integer) where T
+    @assert length(buffer) == length(arr)
+    @assert length(arr) % n == 0
+
+    GC.@preserve arr buffer begin
+        if Int(pointer(arr)) & 0x3f > 0 || length(arr) < 64
+            # small or not 64-byte aligned
+            temp = deplane_slow(arr, n)
+            GC.@preserve temp begin
+                memcpy(pointer(arr), pointer(temp), sizeof(temp))
+            end
+        else
+            deplane_simd!(buffer, arr, Val(n))
+            memcpy(pointer(arr), pointer(buffer), sizeof(buffer))
+        end
+    end
 end
 
 # {AAA...BBB...CCC...} => {ABCABCABC...}
