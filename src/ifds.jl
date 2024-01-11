@@ -421,6 +421,8 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
 
             columns = columns * spp * sizeof(T)
 
+            buffer::Vector{UInt8} = Vector{UInt8}(undef, columns)
+
             temp2::Ptr{UInt8} = pointer(reinterpret(UInt8, arr))
             for row in 1:rows
                 start = (row - 1) * columns
@@ -433,7 +435,8 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
                     end
                 end
                 vw = view(reinterpret(UInt8, arr), start+1:start+columns)
-                vw .= deplane(vw, sizeof(T))
+                deplane_simd!(buffer, vw, Val(sizeof(T)))
+                vw .= buffer
             end
 
             arr .= bswap.(arr)
@@ -441,7 +444,11 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
     end
 end
 
-deplane(arr::AbstractVector, n::Integer) = deplane_simd(arr, Val(n))
+function deplane(arr::AbstractVector{T}, n::Integer) where T
+    out = Vector{T}(undef, length(arr))
+    deplane_simd!(out, arr, Val(n))
+    out
+end
 
 # {AAA...BBB...CCC...} => {ABCABCABC...}
 function deplane_slow(arr::AbstractVector{T}, n) where T
@@ -450,7 +457,7 @@ function deplane_slow(arr::AbstractVector{T}, n) where T
 end
 
 # {AAA...BBB...CCC...} => {ABCABCABC...}
-@generated function deplane_simd(arr::AbstractVector{T}, ::Val{N}) where {T, N}
+@generated function deplane_simd!(out::Vector{T}, arr::AbstractVector{T}, ::Val{N}) where {T, N}
     width = cld(sizeof(T) * N, 64) * 64
     count = fld(width, sizeof(T) * N) # pixels per iteration
 
@@ -493,7 +500,6 @@ end
 
         GC.@preserve arr begin
             ptrA = pointer(arr)
-            out = Vector{T}(undef, length(arr) + $count)
             num_pixels = fld(length(arr), N)
             iterations = fld(num_pixels, $count) - 1
             out_index = 1 # output index
@@ -515,8 +521,6 @@ end
             @inbounds for i in 0:remaining-1
                 $(finish...)
             end
-
-            resize!(out, length(out) - $count)
         end
     end
 end
