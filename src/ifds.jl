@@ -281,41 +281,48 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
     parallel_enabled = something(tryparse(Bool, get(ENV, "JULIA_IMAGES_PARALLEL", "1")), false)
     do_parallel = parallel_enabled && rows * cols > 250_000 # pixels
 
-    tasks::Vector{Task} = []
-    start = 1
     comp = Val(compression)
-    for (offset, len, bytes) in zip(offsets, strip_samples, encoded_bytes)
-        @debug "reading strip with $len samples from $bytes encoded bytes"
+    if is_complicated(ifd)
+        tasks::Vector{Task} = []
+        start = 1
+        for (offset, len, bytes) in zip(offsets, strip_samples, encoded_bytes)
+            @debug "reading strip with $len samples from $bytes encoded bytes"
 
-        seek(tf, offset)
-        arr = view(samples, start:(start+len-1))
-        data = Vector{UInt8}(undef, bytes)
-        read!(tf, data)
-        tfs = TiffFileStrip{O}(IOBuffer(data), ifd)
+            seek(tf, offset)
+            arr = view(samples, start:(start+len-1))
+            data = Vector{UInt8}(undef, bytes)
+            read!(tf, data)
+            tfs = TiffFileStrip{O}(IOBuffer(data), ifd)
 
-        function go(tfs, arr, comp)
-            cls = istiled(ifd) ? tilecols(ifd) : cols
-            cls = isplanar(ifd) ? cls : cls * spp # number of samples (not pixels) per column
-            rws = fld(length(arr), cls)
-            sz = uncompressed_size(ifd, cls, rws)
-            read!(tfs, view(reinterpret(UInt8, vec(arr)), 1:sz), comp)
-            if is_irregular_bps(ifd)
-                arr .= recode(arr, rws, cls, bps)
+            function go(tfs, arr, comp)
+                cls = istiled(ifd) ? tilecols(ifd) : cols
+                cls = isplanar(ifd) ? cls : cls * spp # number of samples (not pixels) per column
+                rws = fld(length(arr), cls)
+                sz = uncompressed_size(ifd, cls, rws)
+                read!(tfs, view(reinterpret(UInt8, vec(arr)), 1:sz), comp)
+                if is_irregular_bps(ifd)
+                    arr .= recode(arr, rws, cls, bps)
+                end
+                reverse_prediction!(tfs.ifd, arr)
             end
-            reverse_prediction!(tfs.ifd, arr)
+
+            if do_parallel
+                push!(tasks, Threads.@spawn go(tfs, arr, comp))
+            else
+                go(tfs, arr, comp)
+            end
+
+            start += len
         end
 
-        if do_parallel
-            push!(tasks, Threads.@spawn go(tfs, arr, comp))
-        else
-            go(tfs, arr, comp)
+        for task in tasks
+            wait(task)
         end
+    else
+        @debug "fast path for uncomplicated images"
 
-        start += len
-    end
-
-    for task in tasks
-        wait(task)
+        seek(tf, first(offsets))
+        read!(tf, target)
     end
 
     if isplanar(ifd)
