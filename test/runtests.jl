@@ -238,7 +238,7 @@ end
                 out = Vector{typ}(undef, size * planes)
                 a=reduce(vcat,[fill(typ(x),size) for x in 1:planes])
                 b=copy(a)
-                TiffImages.deplane!(out, a, planes)
+                TiffImages.deplane!(out, a, Val(planes))
                 @test a == TiffImages.deplane_slow(b, planes)
             end
         end

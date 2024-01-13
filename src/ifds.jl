@@ -420,7 +420,10 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
 
             buffer::Vector{UInt8} = Vector{UInt8}(undef, columns)
 
+            valn = Val(sizeof(T))
+
             temp2::Ptr{UInt8} = pointer(reinterpret(UInt8, arr))
+
             for row in 1:rows
                 start = (row - 1) * columns
                 for plane in 1:spp
@@ -432,10 +435,8 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
                     end
                 end
                 vw = view(reinterpret(UInt8, arr), start+1:start+columns)
-                deplane!(buffer, vw, sizeof(T))
+                deplane!(buffer, vw, valn)
             end
-
-            arr .= bswap.(arr)
         end
     end
 end
@@ -443,25 +444,25 @@ end
 # {AAA...BBB...CCC...} => {ABCABCABC...}
 function deplane!(arr::AbstractVector{T}, n::Integer) where T
     out = Vector{T}(undef, length(arr))
-    deplane!(out, arr, n)
+    deplane!(out, arr, Val(n))
 end
 
 const is_mac_or_windows_x64 = (Sys.iswindows() || Sys.isapple()) && Sys.ARCH == :x86_64
 
 # {AAA...BBB...CCC...} => {ABCABCABC...}
-function deplane!(buffer::AbstractVector{T}, arr::AbstractVector{T}, n::Integer) where T
+function deplane!(buffer::AbstractVector{T}, arr::AbstractVector{T}, n::Val{N}) where {T, N}
     @assert length(buffer) == length(arr)
-    @assert length(arr) % n == 0
+    @assert length(arr) % N == 0
 
     GC.@preserve arr buffer begin
         if Int(pointer(arr)) & 0x3f > 0 || length(arr) < 64 || is_mac_or_windows_x64
             # small or not 64-byte aligned
-            temp = deplane_slow(arr, n)
+            temp = deplane_slow(arr, N)
             GC.@preserve temp begin
                 memcpy(pointer(arr), pointer(temp), sizeof(temp))
             end
         else
-            deplane_simd!(buffer, arr, Val(n))
+            deplane_simd!(buffer, arr, n)
             memcpy(pointer(arr), pointer(buffer), sizeof(buffer))
         end
     end
