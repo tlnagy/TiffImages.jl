@@ -237,8 +237,9 @@ end
             for size in 64:164
                 out = Vector{typ}(undef, size * planes)
                 a=reduce(vcat,[fill(typ(x),size) for x in 1:planes])
-                TiffImages.deplane_simd!(out, a, Val(planes))
-                @test out == TiffImages.deplane_slow(a, planes)
+                b=copy(a)
+                TiffImages.deplane!(out, a, planes)
+                @test a == TiffImages.deplane_slow(b, planes)
             end
         end
     end
