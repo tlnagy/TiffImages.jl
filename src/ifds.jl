@@ -446,13 +446,15 @@ function deplane!(arr::AbstractVector{T}, n::Integer) where T
     deplane!(out, arr, n)
 end
 
+const is_mac_or_windows_x64 = (Sys.iswindows() || Sys.isapple()) && Sys.ARCH == :x86_64
+
 # {AAA...BBB...CCC...} => {ABCABCABC...}
 function deplane!(buffer::AbstractVector{T}, arr::AbstractVector{T}, n::Integer) where T
     @assert length(buffer) == length(arr)
     @assert length(arr) % n == 0
 
     GC.@preserve arr buffer begin
-        if Int(pointer(arr)) & 0x3f > 0 || length(arr) < 64
+        if Int(pointer(arr)) & 0x3f > 0 || length(arr) < 64 || is_mac_or_windows_x64
             # small or not 64-byte aligned
             temp = deplane_slow(arr, n)
             GC.@preserve temp begin
