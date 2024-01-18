@@ -68,8 +68,9 @@ function lzw_decode!(io, arr)
             buffer::Int=0 # buffer for reading in codes
             bitcount::Int=0 # number of valid bits in buffer
             codesize::Int=9 # current number of bits per code
-            input::Vector{UInt8} = Vector{UInt8}(undef, bytesavailable(io))
-            read!(io, input)
+            input::Vector{UInt8} = Vector{UInt8}(undef, bytesavailable(io) + 1)
+            read!(io, view(input, 1:length(input)-1))
+            input[end] = 0
             function getcode(buffer, code, bitcount, codesize, i)
                 old_code::Int = code
 
