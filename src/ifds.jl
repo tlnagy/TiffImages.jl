@@ -285,7 +285,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
     if is_complicated(ifd)
         tasks::Vector{Task} = []
         start = 1
-        for (offset, len, bytes) in zip(offsets, strip_samples, encoded_bytes)
+        for (offset::Int, len::Int, bytes::Int) in zip(offsets, strip_samples, encoded_bytes)
             @debug "reading strip with $len samples from $bytes encoded bytes"
 
             seek(tf, offset)
