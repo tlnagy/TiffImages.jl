@@ -308,3 +308,8 @@ end
     encoded = get_example("shapes_lzw_predictor3.tif")
     @test TiffImages.load(original) == TiffImages.load(encoded)
 end
+
+@testset "Issue #148" begin
+    im = get_example("earthlab.tif")
+    @test size(TiffImages.load(im)) == (2400, 2400) # no error
+end

@@ -188,12 +188,14 @@ function lzw_decode!(io, arr)
                     end
                 end
 
-                if table_count == 511
-                    codesize = 10
-                elseif table_count == 1023
-                    codesize = 11
-                elseif table_count == 2047
-                    codesize = 12
+                if out_position < output_size
+                    if table_count == 511
+                        codesize = 10
+                    elseif table_count == 1023
+                        codesize = 11
+                    elseif table_count == 2047
+                        codesize = 12
+                    end
                 end
             end
 
