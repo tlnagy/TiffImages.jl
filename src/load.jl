@@ -46,7 +46,7 @@ function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
 
     if tf.need_bswap && !is_irregular_bps(ifd)
         @debug "bswap'ing data"
-        loaded = bswap.(loaded)
+        loaded .= bswap.(loaded)
     end
 
     data = fixcolors(loaded, first(ifds))
