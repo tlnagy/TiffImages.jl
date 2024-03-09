@@ -327,10 +327,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
 
     if isplanar(ifd)
         samplesv = vec(samples)
-        temp = deplane(samplesv, spp)
-        GC.@preserve samplesv temp target begin
-            memcpy(pointer(samplesv), pointer(temp), sizeof(target))
-        end
+        deplane!(samplesv, spp)
     end
 end
 
@@ -421,7 +418,12 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
 
             columns = columns * spp * sizeof(T)
 
+            buffer::Vector{UInt8} = Vector{UInt8}(undef, columns)
+
+            valn = Val(sizeof(T))
+
             temp2::Ptr{UInt8} = pointer(reinterpret(UInt8, arr))
+
             for row in 1:rows
                 start = (row - 1) * columns
                 for plane in 1:spp
@@ -433,15 +435,38 @@ function reverse_prediction!(ifd::IFD, arr::AbstractArray{T,N}) where {T, N}
                     end
                 end
                 vw = view(reinterpret(UInt8, arr), start+1:start+columns)
-                vw .= deplane(vw, sizeof(T))
+                deplane!(buffer, vw, valn)
             end
-
-            arr .= bswap.(arr)
         end
     end
 end
 
-deplane(arr::AbstractVector, n::Integer) = deplane_simd(arr, Val(n))
+# {AAA...BBB...CCC...} => {ABCABCABC...}
+function deplane!(arr::AbstractVector{T}, n::Integer) where T
+    out = Vector{T}(undef, length(arr))
+    deplane!(out, arr, Val(n))
+end
+
+const is_mac_or_windows_x64 = (Sys.iswindows() || Sys.isapple()) && Sys.ARCH == :x86_64
+
+# {AAA...BBB...CCC...} => {ABCABCABC...}
+function deplane!(buffer::AbstractVector{T}, arr::AbstractVector{T}, n::Val{N}) where {T, N}
+    @assert length(buffer) == length(arr)
+    @assert length(arr) % N == 0
+
+    GC.@preserve arr buffer begin
+        if Int(pointer(arr)) & 0x3f > 0 || length(arr) < 64 || is_mac_or_windows_x64
+            # small or not 64-byte aligned
+            temp = deplane_slow(arr, N)
+            GC.@preserve temp begin
+                memcpy(pointer(arr), pointer(temp), sizeof(temp))
+            end
+        else
+            deplane_simd!(buffer, arr, n)
+            memcpy(pointer(arr), pointer(buffer), sizeof(buffer))
+        end
+    end
+end
 
 # {AAA...BBB...CCC...} => {ABCABCABC...}
 function deplane_slow(arr::AbstractVector{T}, n) where T
@@ -450,7 +475,7 @@ function deplane_slow(arr::AbstractVector{T}, n) where T
 end
 
 # {AAA...BBB...CCC...} => {ABCABCABC...}
-@generated function deplane_simd(arr::AbstractVector{T}, ::Val{N}) where {T, N}
+@generated function deplane_simd!(out::Vector{T}, arr::AbstractVector{T}, ::Val{N}) where {T, N}
     width = cld(sizeof(T) * N, 64) * 64
     count = fld(width, sizeof(T) * N) # pixels per iteration
 
@@ -493,7 +518,6 @@ end
 
         GC.@preserve arr begin
             ptrA = pointer(arr)
-            out = Vector{T}(undef, length(arr) + $count)
             num_pixels = fld(length(arr), N)
             iterations = fld(num_pixels, $count) - 1
             out_index = 1 # output index
@@ -515,8 +539,6 @@ end
             @inbounds for i in 0:remaining-1
                 $(finish...)
             end
-
-            resize!(out, length(out) - $count)
         end
     end
 end

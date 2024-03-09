@@ -44,7 +44,7 @@ function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
         end
     end
 
-    if tf.need_bswap && !is_irregular_bps(ifd)
+    if (tf.need_bswap && !is_irregular_bps(ifd)) || predictor(ifd) == 3
         @debug "bswap'ing data"
         loaded .= bswap.(loaded)
     end
