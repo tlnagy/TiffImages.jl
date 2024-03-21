@@ -33,7 +33,8 @@ samplesperpixel(img::AbstractArray) = samplesperpixel(eltype(img))
 samplesperpixel(::Type{<: Colorant{T, N}}) where {T, N} = N
 
 bitspersample(img::AbstractArray) = bitspersample(eltype(img))
-bitspersample(::Type{<: Colorant{T, N}}) where {T, N} = sizeof(T)*8
+bitspersample(::Type{<: Colorant{T, N}}) where {T, N} = sizeof(T) * 8
+bitspersample(::Type{<: Colorant{<: FixedPoint{T, S}, N}}) where {T, S, N} = S
 
 sampleformat(img::AbstractArray) = sampleformat(eltype(img))
 sampleformat(::Type{<: Colorant{T, N}}) where {T <: AbstractFloat, N} = SAMPLEFORMAT_IEEEFP
