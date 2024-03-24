@@ -34,12 +34,13 @@ samplesperpixel(::Type{<: Colorant{T, N}}) where {T, N} = N
 
 bitspersample(img::AbstractArray) = bitspersample(eltype(img))
 bitspersample(::Type{<: Colorant{T, N}}) where {T, N} = sizeof(T) * 8
-bitspersample(::Type{<: Colorant{<: FixedPoint{T, S}, N}}) where {T, S, N} = S
+bitspersample(::Type{<: Colorant{<: Normed{T, S}, N}}) where {T, S, N} = S
+bitspersample(::Type{<: Colorant{<: Fixed{T, S}, N}}) where {T, S, N} = S + 1
 
 sampleformat(img::AbstractArray) = sampleformat(eltype(img))
 sampleformat(::Type{<: Colorant{T, N}}) where {T <: AbstractFloat, N} = SAMPLEFORMAT_IEEEFP
-sampleformat(::Type{<: Colorant{<: FixedPoint{T, S}, N}}) where {T <: Unsigned, N, S} = SAMPLEFORMAT_UINT
-sampleformat(::Type{<: Colorant{<: FixedPoint{T, S}, N}}) where {T <: Signed, N, S} = SAMPLEFORMAT_INT
+sampleformat(::Type{<: Colorant{<: Normed{T, S}, N}}) where {T, N, S} = SAMPLEFORMAT_UINT
+sampleformat(::Type{<: Colorant{<: Fixed{T, S}, N}}) where {T, N, S} = SAMPLEFORMAT_INT
 sampleformat(::Type{<: Colorant{Complex{T}, N}}) where {T <: AbstractFloat, N} = SAMPLEFORMAT_COMPLEXIEEEFP
 sampleformat(::Type{<: Colorant{Complex{T}, N}}) where {T <: Signed, N} = SAMPLEFORMAT_COMPLEXINT
 

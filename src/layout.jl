@@ -68,9 +68,9 @@ interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNSPECIFIED}, ::
 interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_ASSOCALPHA}, @nospecialize(::Val)) = coloralpha(interpretation(p)), false
 interpretation(p::PhotometricInterpretations, ::Val{EXTRASAMPLE_UNASSALPHA}, nsamples::Val) = interpretation(p, Val(EXTRASAMPLE_ASSOCALPHA), nsamples)
 
-_mappedtype(::Type{T}, bpp) where {T} = T
-_mappedtype(::Type{T}, bpp) where {T <: Unsigned} = Normed{T, bpp}
-_mappedtype(::Type{T}, bpp) where {T <: Signed}   = Fixed{T, bpp - 1}
+_mappedtype(::Type{T}, bps) where {T} = T
+_mappedtype(::Type{T}, bps) where {T <: Unsigned} = Normed{T, bps}
+_mappedtype(::Type{T}, bps) where {T <: Signed}   = Fixed{T, bps - 1}
 
 function rawtype(ifd::IFD)
     samplesperpixel = nsamples(ifd)
@@ -125,13 +125,13 @@ Allocate a cache for this IFD with correct type and size.
 function getcache(ifd::IFD)
     T = rawtype(ifd)
     colortype, extras = interpretation(ifd)
-    bpp = bitspersample(ifd)
+    bps = bitspersample(ifd)
     if istiled(ifd)
         tile_width = tilecols(ifd)
         tile_height = tilerows(ifd)
-        return Array{colortype{_mappedtype(T, bpp)}}(undef, cld(ncols(ifd), tile_width) * tile_width, cld(nrows(ifd), tile_height) * tile_height)
+        return Array{colortype{_mappedtype(T, bps)}}(undef, cld(ncols(ifd), tile_width) * tile_width, cld(nrows(ifd), tile_height) * tile_height)
     else
-        return Array{colortype{_mappedtype(T, bpp)}}(undef, ncols(ifd), nrows(ifd))
+        return Array{colortype{_mappedtype(T, bps)}}(undef, ncols(ifd), nrows(ifd))
     end
 end
 

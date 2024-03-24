@@ -37,3 +37,9 @@
 
     @test TiffImages.interpretation(ifd) == (RGBA, false)
 end
+
+@testset "Sample Types" begin
+    @test TiffImages.bitspersample(RGB{Float32}) == 32
+    @test TiffImages.bitspersample(RGB{N1f7}) == 7
+    @test TiffImages.bitspersample(RGB{Q4f11}) == 12
+end
