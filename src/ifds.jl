@@ -193,10 +193,10 @@ Advances the iterator to the next IFD.
    IFD
 - `Int`: Offset of the next IFD
 """
-function Base.iterate(file::TiffFile, state::Tuple{Union{IFD{O}, Nothing}, Int}) where {O}
+function Base.iterate(file::TiffFile, state::Tuple{Union{<: IFD, Nothing}, Int})
     curr_ifd, next_ifd_offset = state
     # if current element doesn't exist, exit
-    (curr_ifd == nothing) && return nothing
+    (curr_ifd === nothing) && return nothing
     (next_ifd_offset <= 0) && return (curr_ifd, (nothing, 0))
 
     seek(file.io, next_ifd_offset)
@@ -618,7 +618,7 @@ const nice_n = filter(x -> !(max(nextpow(2, x), 8) - x in [0,1,2,3,5]), 1:31)
             # arrange bytes so that each TT-sized lane contains a single code (+ extra bits)
             $(sym("b", i)) = shufflevector($(sym("a", i)), shuffle)
             # shift out extra low-order bits
-            $(sym("c", i)) = bswap(reinterpret(Vec{$count, $TT}, $(sym("b", i)))) >> shift
+            $(sym("c", i)) = _bswap(reinterpret(Vec{$count, $TT}, $(sym("b", i)))) >> shift
             # mask out extra high-order bits
             $(sym("d", i)) = $(sym("c", i)) & mask
             in_ptr += $m

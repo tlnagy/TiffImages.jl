@@ -215,6 +215,6 @@ function Base.read!(tfs::TiffFileStrip{S}, arr::AbstractVector{UInt8}, ::Val{COM
     lzw_decode!(tfs, arr)
 end
 
-function Base.read!(T, A, ::Val{C}) where C
+function Base.read!(::Union{TiffFile, TiffFileStrip}, ::AbstractVector{UInt8}, ::Val{C}) where C
     error("Compression $C is not implemented. Please open an issue against TiffImages.jl.")
 end

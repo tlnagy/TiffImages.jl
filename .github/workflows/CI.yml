@@ -31,6 +31,10 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      - uses: julia-actions/julia-downgrade-compat@v1 # downgrade packages to minimum compatible version on 1.6
+        if: ${{ matrix.version == '1.6' }}
+        with:
+          skip: Mmap, UUIDs, Test 
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts

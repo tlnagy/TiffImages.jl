@@ -108,7 +108,8 @@ const julian_to_tiff = Dict(
     Int64               => 0x0011,   # SLONG8
 )
 
-Base.bswap(c::Colorant{T, N}) where {T, N} = mapc(bswap, c)
+_bswap(a) = bswap(a)
+_bswap(c::Colorant{T, N}) where {T, N} = mapc(bswap, c)
 
 function getstream(fmt, io, name)
     # adapted from https://github.com/JuliaStats/RDatasets.jl/pull/119/

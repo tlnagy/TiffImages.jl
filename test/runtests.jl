@@ -8,6 +8,8 @@ using Statistics
 using Test
 using TiffImages
 
+include("Aqua.jl")
+
 DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
 doctest(TiffImages)
 
@@ -268,7 +270,7 @@ end
     m = sum(ref.data .- other.data) ./ length(ref)
     @test m.r < 0.001 && m.g < 0.001 && m.b < 0.001
 
-    @test other.ifds[1][TiffImages.BITSPERSAMPLE].data == UInt16[12,12,12]
+    @test ifds(other)[TiffImages.BITSPERSAMPLE].data == UInt16[12,12,12]
 
     other = TiffImages.load(get_example("shapes_lzw_14bps.tif"))
     m = sum(ref.data .- other.data) ./ length(ref)

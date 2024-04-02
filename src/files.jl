@@ -32,7 +32,7 @@ function Base.read(io::Stream, ::Type{TiffFile})
     bs = need_bswap(io)
     offset_size = offsetsize(io)
     first_offset_raw = read(io, offset_size)
-    first_offset = Int(bs ? bswap(first_offset_raw) : first_offset_raw)
+    first_offset = Int(bs ? _bswap(first_offset_raw) : first_offset_raw)
     TiffFile{offset_size, typeof(io)}(nothing, filepath, io, first_offset, bs)
 end
 
@@ -82,12 +82,12 @@ offset(file::TiffFile{O}) where {O} = O
 
 function Base.read(file::TiffFile{O}, ::Type{T}) where {O, T}
     value = read(file.io, T)
-    file.need_bswap ? bswap(value) : value
+    file.need_bswap ? _bswap(value) : value
 end
 
 function Base.read(file::TiffFile{O}, ::Type{String}) where O
     value = read(file.io, O)
-    file.need_bswap ? bswap(value) : value
+    file.need_bswap ? _bswap(value) : value
 end
 
 function Base.read!(file::TiffFile, arr::AbstractArray)
@@ -100,7 +100,7 @@ Base.write(file::TiffFile, arr::AbstractVector{Any}) = write(file.io.io, Array{U
 Base.seek(file::TiffFile, n::Integer) = seek(file.io, n)
 FileIO.stream(file::TiffFile) = stream(file.io)
 
-Base.bswap(x::Rational{T}) where {T} = Rational(bswap(x.num), bswap(x.den))
+_bswap(x::Rational{T}) where {T} = Rational(_bswap(x.num), _bswap(x.den))
 
 Base.IteratorSize(::TiffFile) = Base.SizeUnknown()
 Base.eltype(::TiffFile{O}) where {O} = IFD{O}
