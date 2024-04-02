@@ -18,7 +18,10 @@ is_complicated(ifd::IFD) = !iscontiguous(ifd) || compression(ifd) != COMPRESSION
 function is_homogeneous(ifds::Vector{<:IFD})
     return all(map(==(nrows(first(ifds))), nrows.(ifds))) &&
         all(map(==(ncols(first(ifds))), ncols.(ifds))) &&
-        all(map(==(colortype(first(ifds))), colortype.(ifds)))
+        all(map(==(colortype(first(ifds))), colortype.(ifds))) &&
+        # tiled images are padded during encoding, so 'nrows' and 'ncols'
+        # may not indicate the true space requirements for decoding
+        all(map(==(istiled(first(ifds))), istiled.(ifds)))
 end
 
 """

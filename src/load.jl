@@ -36,7 +36,7 @@ function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
     if mmap && iscontiguous(ifd) && getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE) === COMPRESSION_NONE
         return MmappedTIFF(tf, ifds)
     elseif lazyio || mmap
-        is_homogeneous(ifds) || error("lazy IO is only supported for homogeneous files")
+        homogeneous || error("lazy IO is only supported for homogeneous files")
         mmap && @warn "Compression and discontiguous planes are not supported by `mmap`, use `lazyio = true` instead"
         loaded = LazyBufferedTIFF(tf, ifds)
     else
