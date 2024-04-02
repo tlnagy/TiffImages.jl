@@ -30,29 +30,44 @@ function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
         nplanes += 1
     end
 
+    homogeneous = is_homogeneous(ifds)
+
     ifd = first(ifds)
     if mmap && iscontiguous(ifd) && getdata(CompressionType, ifd, COMPRESSION, COMPRESSION_NONE) === COMPRESSION_NONE
         return MmappedTIFF(tf, ifds)
     elseif lazyio || mmap
+        homogeneous || error("lazy IO is only supported for homogeneous files")
         mmap && @warn "Compression and discontiguous planes are not supported by `mmap`, use `lazyio = true` instead"
         loaded = LazyBufferedTIFF(tf, ifds)
     else
         if nplanes == 1
             loaded = load(tf, ifds, nothing; verbose=verbose)
         else
-            loaded = load(tf, ifds, nplanes; verbose=verbose)
+            loaded = load(tf, ifds, nplanes, Val(homogeneous); verbose=verbose)
         end
     end
 
     if (tf.need_bswap && !is_irregular_bps(ifd)) || predictor(ifd) == 3
         @debug "bswap'ing data"
-        loaded .= bswap.(loaded)
+        if !homogeneous
+            for sub in loaded
+                sub .= bswap.(sub)
+            end
+        else
+            loaded .= bswap.(loaded)
+        end
     end
 
-    data = fixcolors(loaded, first(ifds))
-
     close(tf.io)
-    return DenseTaggedImage(data, ifds)
+
+    if nplanes > 1 && !homogeneous
+        # multiple images of different sizes or color types
+        data = fixcolors.(loaded, ifds)
+        return StridedTaggedImage(data, ifds)
+    else
+        data = fixcolors(loaded, first(ifds))
+        return DenseTaggedImage(data, ifds)
+    end
 end
 
 """
@@ -75,14 +90,14 @@ function fixcolors(loaded, ifd)
 end
 
 function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, ::Nothing; verbose = true)
-    ifd = ifds[1]
+    ifd = first(ifds)
     cache = getcache(ifd)
     read!(cache, tf, ifd)
-    istiled(ifd) ? Matrix(tile(cache, ifd)) : Matrix(cache')
+    Matrix(transform(cache, ifd))
 end
 
-function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N; verbose = true)
-    ifd = ifds[1]
+function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N, homogeneous::Val{true}; verbose = true)
+    ifd = first(ifds)
 
     cache = getcache(ifd)
 
@@ -90,11 +105,25 @@ function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N; verbose = true)
 
     @showprogress desc="Loading:" enabled=verbose for (idx, ifd) in enumerate(ifds)
         read!(cache, tf, ifd)
-        data[:, :, idx] .= (istiled(ifd) ? tile(cache, ifd) : cache')
+        data[:, :, idx] .= transform(cache, ifd)
+    end
+
+    return data
+ end
+
+function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N, homogeneous::Val{false}; verbose = true)
+    data = Vector{AbstractMatrix}()
+
+    @showprogress desc="Loading:" enabled=verbose for (idx, ifd) in enumerate(ifds)
+        cache = getcache(ifd)
+        read!(cache, tf, ifd)
+        push!(data, transform(cache, ifd))
     end
 
     return data
 end
+
+transform(cache, ifd) = istiled(ifd) ? tile(cache, ifd) : cache'
 
 function tile(cache, ifd)
     rows = nrows(ifd)
