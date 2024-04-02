@@ -4,7 +4,7 @@ _"Don't get into a tiff with your images"_
 
 | **Stable release** | **Documentation**                 | **Build Status**                                              |
 |:------------------------------------------------------|:-------------------------------------------------------------------------|:--------------------------------------------------------------|
-| ![](https://juliahub.com/docs/TiffImages/version.svg) | [![][docs-stable-img]][docs-stable-url][![][docs-dev-img]][docs-dev-url] | [![][status-img]][status-url] [![][ci-img]][ci-url] [![][codecov-img]][codecov-url] |
+| ![](https://juliahub.com/docs/TiffImages/version.svg) | [![][docs-stable-img]][docs-stable-url][![][docs-dev-img]][docs-dev-url] | [![][status-img]][status-url] [![][ci-img]][ci-url] [![][codecov-img]][codecov-url] [![][aqua-img]][aqua-url] |
 
 This package aims to be a fast, minimal, and correct TIFF reader and writer
 written in Julia.
@@ -45,3 +45,6 @@ Please see the documentation above for usage details and examples
 
 [status-img]: https://www.repostatus.org/badges/latest/active.svg
 [status-url]: https://www.repostatus.org/#active
+
+[aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
+[aqua-url]: https://github.com/JuliaTesting/Aqua.jl

@@ -48,7 +48,6 @@ end
 struct Palette{T} <: Colorant{T, 1}
     i::T
 end
-Base.reinterpret(::Type{Palette{T}}, arr::A) where {T, N, S, A <: AbstractArray{S, N}} = arr
 
 interpretation(p::PhotometricInterpretations) = interpretation(Val(p))
 interpretation(::Val{PHOTOMETRIC_RGB}) = RGB

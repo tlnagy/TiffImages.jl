@@ -51,10 +51,10 @@ function load(tf::TiffFile; verbose=true, mmap = false, lazyio = false)
         @debug "bswap'ing data"
         if !homogeneous
             for sub in loaded
-                sub .= bswap.(sub)
+                sub .= _bswap.(sub)
             end
         else
-            loaded .= bswap.(loaded)
+            loaded .= _bswap.(loaded)
         end
     end
 
