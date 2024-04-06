@@ -70,9 +70,9 @@ For example, `channel(img, 2)` would yield the green channel
 of an RGB image, or the (unlabeled) second channel of a multispectral
 image
 """
-channel(img::AbstractArray, i::Int) = channel.(img, i)
-channel(x, i) = getfield(x, i)
-channel(x::WidePixel, i) = i <= length(x.color) ? getfield(x.color, i) : x.extra[i - length(x.color)]
+channel(img::AbstractTIFF, i::Int) = channel.(img, i)
+channel(x::Colorant, i::Int) = getfield(x, i)
+channel(x::WidePixel, i::Int) = i <= length(x.color) ? getfield(x.color, i) : x.extra[i - length(x.color)]
 
 _length(x) = length(x)
 _length(T::Type{<: Tuple}) = length(fieldnames(T))
@@ -95,7 +95,7 @@ nchannels(::WidePixel{C,X}) where {C, X} = _length(C) + _length(X)
 
 Extract the color channels from multispectral image `img`
 """
-color(img::T) where {T <: AbstractTIFF{<: WidePixel}} = color.(img)
+color(img::AbstractTIFF{<: WidePixel}) = color.(img)
 
 """
     color(img::AbstractTIFF)
