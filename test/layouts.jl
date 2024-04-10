@@ -18,10 +18,9 @@
     # handle case where SamplesPerPixel is missing, issue #56
     ifd = TiffImages.IFD(UInt32)
     ifd[TiffImages.PHOTOMETRIC] = TiffImages.PHOTOMETRIC_MINISBLACK
-    ifd[TiffImages.BITSPERSAMPLE] = [64]
-    ifd[TiffImages.SAMPLEFORMAT] = [3]
+    ifd[TiffImages.BITSPERSAMPLE] = [8]
 
-    @test TiffImages.interpretation(ifd) == Gray{Float64}
+    @test TiffImages.interpretation(ifd) == Gray{N0f8}
 
     ifd = TiffImages.IFD(UInt32)
     ifd[TiffImages.PHOTOMETRIC] = TiffImages.PHOTOMETRIC_MINISBLACK

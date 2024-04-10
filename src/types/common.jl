@@ -91,11 +91,28 @@ nchannels(::Type{WidePixel{C,X}}) where {C, X} = _length(C) + _length(X)
 nchannels(::WidePixel{C,X}) where {C, X} = _length(C) + _length(X)
 
 """
-    color(img::AbstractTIFF{ <: WidePixel})
+    color(img::AbstractTIFF{ <: WidePixel}; alpha)
 
 Extract the color channels from multispectral image `img`
+
+The optional `alpha` parameter allows an arbitrary channel to be used as the alpha channel
+
+```jldoctest; setup=:(import TiffImages: DenseTaggedImage, WidePixel; import ColorTypes: RGB, RGBA)
+julia> img = DenseTaggedImage(WidePixel.([rand(RGB{Float32}) for x in 1:256, y in 1:256], [(rand(Float32),) for x in 1:256, y in 1:256]));
+
+julia> eltype(img)
+WidePixel{RGB{Float32}, Tuple{Float32}}
+
+julia> nchannels(img)
+4
+
+julia> eltype(color(img; alpha=4)) # use the fourth channel as an alpha channel
+RGBA{Float32}
+```
 """
-color(img::AbstractTIFF{<: WidePixel}) = color.(img)
+function color(img::AbstractTIFF{<: WidePixel{C, X}}; alpha::Union{Nothing, Integer}=nothing) where {C, X}
+    alpha == nothing ? color.(img) : ColorTypes.coloralpha(C).(ColorTypes.color.(color.(img)), channel.(img, alpha))
+end
 
 """
     color(img::AbstractTIFF)

@@ -5,6 +5,9 @@
 ```@docs
 TiffImages.load
 TiffImages.save
+TiffImages.color
+TiffImages.nchannels
+TiffImages.channel
 ```
 
 ### Output Types
