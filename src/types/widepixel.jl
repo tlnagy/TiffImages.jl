@@ -16,6 +16,7 @@ function Base.show(io::IO, x::WidePixel{C,X}) where {C, X}
     if get(io, :compact, false)
         print(io, "WidePixel($(x.color))")
     else
-        print(io, "WidePixel($(x.color)) + $(length(x.extra)) extra channels")
+        len = length(x.extra)
+        print(io, "WidePixel($(x.color)) + $len extra channel$(len > 1 ? "s" : "")")
     end
 end
