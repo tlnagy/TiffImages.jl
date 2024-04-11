@@ -110,9 +110,7 @@ julia> eltype(color(img; alpha=4)) # use the fourth channel as an alpha channel
 RGBA{Float32}
 ```
 """
-function color(img::AbstractTIFF{<: WidePixel{C, X}}; alpha::Union{Nothing, Integer}=nothing) where {C, X}
-    alpha == nothing ? color.(img) : ColorTypes.coloralpha(C).(ColorTypes.color.(color.(img)), channel.(img, alpha))
-end
+color(img::AbstractTIFF{<: WidePixel}; alpha::Union{Nothing, Integer}=nothing) = color.(img; alpha)
 
 """
     color(img::AbstractTIFF)
@@ -122,11 +120,15 @@ This is an identity relation that just returns `img`
 color(img::AbstractTIFF) = img
 
 """
-    color(x::WidePixel)
+    color(x::WidePixel; alpha)
 
 Return the value of the `color` field of `x`
+
+The optional `alpha` parameter allows an arbitrary channel to be used as the alpha channel
 """
-color(x::WidePixel) = x.color
+function color(x::WidePixel{C, X}; alpha::Union{Nothing, Integer}=nothing) where {C, X}
+    alpha == nothing ? x.color : ColorTypes.coloralpha(C)(ColorTypes.color(x.color), channel(x, alpha))
+end
 
 """
     color(x::Colorant)
