@@ -116,7 +116,7 @@ function Base.getindex(A::LazyBufferedTIFF{T, O, AA}, i1::Int, i2::Int, i::Int) 
     (size(A) == (0, 0, 0)) && error("This image has not been initialized, please `push!` data into it first")
     # check the loaded cache is already the correct slice
     if A.cache_index == i
-        return A.cache[i2, i1]
+        return A.cache[i1, i2]
     end
 
     ifd = ifds(A)[i]
@@ -129,9 +129,11 @@ function Base.getindex(A::LazyBufferedTIFF{T, O, AA}, i1::Int, i2::Int, i::Int) 
 
     read!(A.cache, A.file, ifd)
 
+    A.cache = Matrix(transform(A.cache, ifd))
+
     A.cache_index = i
 
-    return A.cache[i2, i1]
+    return A.cache[i1, i2]
 end
 
 function Base.setindex!(A::LazyBufferedTIFF, I...)
