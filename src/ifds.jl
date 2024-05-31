@@ -569,14 +569,14 @@ function recode_slow(v::AbstractVector{T}, rows::Integer, columns::Integer, n::I
     j = 0 # output index
     # encoding is done per row, so decoding is also done per row
     for _ in 1:rows
-        buffer::Int = 0
+        buffer::UInt64 = 0
         available = 0 # number of valid bits available in buffer
         for _ in 1:columns
             while available < n
                 buffer = (buffer << 8) | vb[i+=1]
                 available += 8
             end
-            val = (buffer >> (available - n)) & ((1 << n) - 1)
+            val = (buffer >> (available - n)) & ((UInt64(1) << n) - 1)
             out[j+=1] = T(val)
             available -= n
         end
