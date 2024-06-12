@@ -110,6 +110,8 @@ const julian_to_tiff = Dict(
 
 _bswap(a) = bswap(a)
 _bswap(c::Colorant{T, N}) where {T, N} = mapc(bswap, c)
+# work around https://github.com/tlnagy/TiffImages.jl/issues/166
+_bswap(x::Vec{N, T}) where {N, T<:Union{UInt8, Int8}} = x
 
 function getstream(fmt, io, name)
     # adapted from https://github.com/JuliaStats/RDatasets.jl/pull/119/
