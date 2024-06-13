@@ -23,7 +23,7 @@ julia> close(img) # when you're done, close the stream
 
 $(FIELDS)
 """
-mutable struct LazyBufferedTIFF{T <: Colorant, O <: Unsigned, AA <: AbstractArray} <: AbstractDenseTIFF{T, 3}
+mutable struct LazyBufferedTIFF{T <: ColorOrTuple, O <: Unsigned, AA <: AbstractArray} <: AbstractDenseTIFF{T, 3}
 
     """
     Pointer to keep track of the backing file
@@ -88,14 +88,14 @@ julia> size(img)
 (100, 100, 2)
 ```
 """
-function Base.empty(::Type{LazyBufferedTIFF}, ::Type{T}, filepath; bigtiff=false) where {T <: Colorant}
+function Base.empty(::Type{LazyBufferedTIFF}, ::Type{T}, filepath; bigtiff=false) where {T <: ColorOrTuple}
     if isfile(filepath)
         error("This file already exists, please use `TiffImages.load` to open")
     end
     LazyBufferedTIFF(T, getstream(format"TIFF", open(filepath, "w+"), filepath); bigtiff = bigtiff)
 end
 
-function memmap(t::Type{T}, filepath; bigtiff=false) where {T <: Colorant}
+function memmap(t::Type{T}, filepath; bigtiff=false) where {T <: ColorOrTuple}
     Base.depwarn("`memmap` is deprecated, please use empty(LazyBufferedTIFF, $t, $filepath; bigtiff = $bigtiff)", :memmap, force = true)
     empty(LazyBufferedTIFF, t, filepath; bigtiff = bigtiff)
 end
