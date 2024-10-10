@@ -509,7 +509,9 @@ end
 end
 
 @enum ExtraSamples begin
-	EXTRASAMPLE_UNSPECIFIED = 0		# unspecified data
-	EXTRASAMPLE_ASSOCALPHA = 1 		# associated alpha data
-	EXTRASAMPLE_UNASSALPHA = 2 		# unassociated alpha data
+	EXTRASAMPLE_UNSPECIFIED = 0			# unspecified data
+	EXTRASAMPLE_ASSOCALPHA = 1			# associated alpha data
+	EXTRASAMPLE_UNASSALPHA = 2			# unassociated alpha data
+	# there's speculation online about this invalid code being used by CorelDraw
+	EXTRASAMPLE_ASSOCALPHA_NS = 999		# associated alpha data (non-standard code)
 end

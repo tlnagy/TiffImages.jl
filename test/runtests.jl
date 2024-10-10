@@ -340,3 +340,22 @@ end
     @test sum(convert.(Float64, reinterpret(N0f8, original)) .- convert.(Float64, reinterpret(N4f12, multicolor[4]))) ./ (216*128) < 0.0001
     @test original == multicolor[5]
 end
+
+@testset "WidePixel" begin
+    original = TiffImages.load(get_example("shapes_uncompressed.tif"))
+    hyper = TiffImages.load(get_example("shapes_hyper.tif"))
+
+    @test TiffImages.color(hyper) == original
+    @test TiffImages.color(original) == original
+
+    @test TiffImages.nchannels(original) == 3
+    @test TiffImages.nchannels(hyper) == 7
+
+    @test TiffImages.channel(hyper[100], 4) == 0.1f0
+    @test TiffImages.channel(hyper[200], 5) == 0.2f0
+    @test TiffImages.channel(hyper[300], 6) == 0.3f0
+    @test TiffImages.channel(hyper[400], 7) == 0.5f0
+
+    @test isapprox(sum(sum.(TiffImages.channel.(Ref(original), 1:3))), 23145.05882)
+    @test isapprox(sum(sum.(TiffImages.channel.(Ref(hyper), 1:7))), 33282.65886)
+end

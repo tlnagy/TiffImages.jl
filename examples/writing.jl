@@ -19,7 +19,7 @@ Random.seed!(123)
 data = rand(RGB{N0f8}, 10, 10)
 
 #md # !!! note
-#md #     TiffImages.jl only works with AbstractArrays with `eltype`s of `<:Colorant` because
+#md #     TiffImages.jl only works with AbstractArrays with `eltype`s of `<:ColorOrTuple` because
 #md #     the writer needs to know how to represent the image data on disk. Make sure to
 #md #     convert your `AbstractArrays` using before passing them. See the
 #md #     [common strategies](#Strategies-for-saving-common-types) section
@@ -101,7 +101,7 @@ TiffImages.load("test.tif")
 
 # The general strategy for saving arrays will differ a bit depending on the
 # type. The key step is the convert or reinterpret the arrays so that the
-# elements are subtypes of `Colors.Colorant`
+# elements are subtypes of `ColorOrTuple`
 
 # #### Unsigned Integers
 
