@@ -223,6 +223,7 @@ end
     uncompressed = get_example("shapes_uncompressed.tif")
     compressed_tiled = get_example("shapes_lzw_tiled.tif")
     @test TiffImages.load(uncompressed) == TiffImages.load(compressed_tiled)
+    @test TiffImages.load(uncompressed)[:] == TiffImages.load(compressed_tiled; lazyio=true)[:]
 end
 
 @testset "Planar" begin
