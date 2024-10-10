@@ -1,6 +1,5 @@
 using ColorTypes
 using ColorVectorSpace
-using Documenter
 using FixedPointNumbers
 using OffsetArrays
 import AxisArrays: AxisArray # No, we don't want to import `AxisArrays.axes`
@@ -9,9 +8,6 @@ using Test
 using TiffImages
 
 include("Aqua.jl")
-
-DocMeta.setdocmeta!(TiffImages, :DocTestSetup, :(using TiffImages); recursive=true)
-doctest(TiffImages)
 
 _wrap(name) = "https://github.com/tlnagy/exampletiffs/blob/master/$name?raw=true"
 
@@ -85,6 +81,7 @@ end
 @testset "Adobe Deflate image" begin
     filepath = get_example("underwater_bmx.tif")
     img = TiffImages.load(filepath)
+    @test Base.get_extension(TiffImages, :CodecZlibExt) === nothing
     @test size(img) == (773, 1076)
     @test eltype(img) == RGB{N0f8}
 
@@ -340,3 +337,6 @@ end
     @test sum(convert.(Float64, reinterpret(N0f8, original)) .- convert.(Float64, reinterpret(N4f12, multicolor[4]))) ./ (216*128) < 0.0001
     @test original == multicolor[5]
 end
+
+include("CodecZlib.jl")
+include("doctests.jl")

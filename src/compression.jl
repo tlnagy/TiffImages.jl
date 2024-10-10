@@ -31,12 +31,18 @@ function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRE
     end
 end
 
+const _zlib_decompression_stream = Ref{Type{<: IO}}(InflateZlibStream)
+get_zlib_decompression_stream() = _zlib_decompression_stream[]
+set_zlib_decompression_stream!(stream::Type{<: IO}) = (_zlib_decompression_stream[] = stream)
+
 function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_DEFLATE})
-    readbytes!(InflateZlibStream(tfs.io), arr)
+    ZlibStream = get_zlib_decompression_stream()
+    readbytes!(ZlibStream(tfs.io), arr)
 end
 
 function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_ADOBE_DEFLATE})
-    readbytes!(InflateZlibStream(tfs.io), arr)
+    ZlibStream = get_zlib_decompression_stream()
+    readbytes!(ZlibStream(tfs.io), arr)
 end
 
 function lzw_decode!(io, arr)

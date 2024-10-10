@@ -34,3 +34,16 @@ Check out the examples to see how to use `TiffImages.jl`
 Pages = ["examples/reading.md", "examples/writing.md", "examples/mmap_lazyio.md"]
 Depth = 1
 ```
+
+## Deflate Decompression
+
+By default, Deflate decompression uses a pure-Julia solution from Inflate.jl.
+However, if CodecZlib is loaded, then the decompression routine from Zlib packaged
+by `Zlib_jll.jl` is used. To use Deflate decompression from Inflate.jl, use the
+following code.
+
+```jldoctest
+using Inflate
+using TiffImages
+TiffImages.set_zlib_decompression_stream!(Inflate.InflateZlibStream)
+```
