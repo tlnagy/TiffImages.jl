@@ -43,6 +43,7 @@ function lzw_decode!(io, arr)
     CLEAR_CODE::Int = 256 + 1
     EOI_CODE::Int = 257 + 1
     TABLE_ENTRY_LENGTH_BITS::Int = 16
+    TABLE_ENTRY_OFFSET_BITS::Int = 8 * sizeof(Int) - TABLE_ENTRY_LENGTH_BITS
 
     output_size = length(arr)
 
@@ -54,9 +55,9 @@ function lzw_decode!(io, arr)
         table_pointer::Ptr{UInt8} = reinterpret(Ptr{UInt8}, Libc.malloc(table_size)) # table of strings
         table_offsets_pointer::Ptr{Int} = reinterpret(Ptr{Int}, Libc.malloc(sizeof(Int) * 4097)) # offsets into table
 
-        @inline create_table_entry(length, offset) = Base.shl_int(length, (64 - TABLE_ENTRY_LENGTH_BITS)) | offset
-        @inline table_entry_length(table_entry) = Base.lshr_int(table_entry, 64 - TABLE_ENTRY_LENGTH_BITS)
-        @inline table_entry_offset(table_entry) = table_entry & (Base.shl_int(1, 64 - TABLE_ENTRY_LENGTH_BITS) - 1)
+        @inline create_table_entry(length, offset) = Base.shl_int(length, TABLE_ENTRY_OFFSET_BITS) | offset
+        @inline table_entry_length(table_entry) = Base.lshr_int(table_entry, TABLE_ENTRY_OFFSET_BITS)
+        @inline table_entry_offset(table_entry) = table_entry & (Base.shl_int(1, TABLE_ENTRY_OFFSET_BITS) - 1)
 
         try
             # InitializeTable();
