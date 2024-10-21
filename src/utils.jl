@@ -110,6 +110,8 @@ const julian_to_tiff = Dict(
 
 _bswap(a) = bswap(a)
 _bswap(c::Colorant{T, N}) where {T, N} = mapc(bswap, c)
+_bswap(p::WidePixel{C, X}) where {C, X} = WidePixel(_bswap(p.color), _bswap(p.extra))
+_bswap(t::Tuple) = map(bswap, t)
 
 function getstream(fmt, io, name)
     # adapted from https://github.com/JuliaStats/RDatasets.jl/pull/119/

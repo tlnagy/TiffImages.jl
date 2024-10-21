@@ -83,7 +83,7 @@ while for BigTIFFs it will be UInt64.
 """
 offset(::DenseTaggedImage{T, N, O, AA}) where {T, N, O, AA} = O
 
-function _constructifd(data::AbstractArray{T, 3}) where {T <: Colorant} 
+function _constructifd(data::AbstractArray{T, 3}) where T <: ColorOrTuple
     offset = UInt32
     # this is only a crude estimate for the amount information that we can store
     # in regular TIFF. The real value should take into account the size of the
@@ -99,7 +99,7 @@ end
 
 Generate a IFD with the minimal set of tags to describe `data`.
 """
-function _constructifd(data::AbstractArray{T, 3}, ::Type{O}) where {T <: Colorant, O <: Unsigned}
+function _constructifd(data::AbstractArray{T, 3}, ::Type{O}) where {T <: ColorOrTuple, O <: Unsigned}
     ifds = IFD{O}[]
 
     for slice in axes(data, 3)
@@ -129,21 +129,21 @@ function cleanup(ifd::IFD{O}) where {O <: Unsigned}
     newifd
 end
 
-function _constructifd(data::AbstractArray{T, 2}, ::Type{O}) where {T <: Colorant, O <: Unsigned}
+function _constructifd(data::AbstractArray{T, 2}, ::Type{O}) where {T <: ColorOrTuple, O <: Unsigned}
     ifd = IFD(O)
 
     ifd[IMAGEWIDTH] = UInt32(size(data, 2))
     ifd[IMAGELENGTH] = UInt32(size(data, 1))
     n_samples = samplesperpixel(data)
-    ifd[BITSPERSAMPLE] = fill(UInt16(bitspersample(data)), n_samples)
+    ifd[BITSPERSAMPLE] = collect(UInt16.(bitspersample(data)))
     ifd[PHOTOMETRIC] = interpretation(data)
     ifd[SAMPLESPERPIXEL] = UInt16(n_samples)
-    if !(T <: Gray{Bool}) # bilevel images don't have the sampleformat tag
-        ifd[SAMPLEFORMAT] = fill(UInt16(sampleformat(data)), n_samples)
+    if !(T <: Gray{N7f1}) # bilevel images don't have the sampleformat tag
+        ifd[SAMPLEFORMAT] = collect(UInt16.(sampleformat(data)))
     end
     extra = extrasamples(data)
     if extra !== nothing
-        ifd[EXTRASAMPLES] = extra
+        ifd[EXTRASAMPLES] = UInt16.(extra)
     end
     ifd
 end

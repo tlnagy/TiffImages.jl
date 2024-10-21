@@ -22,6 +22,7 @@ using SIMD
 const PKGVERSION = @PkgVersion.Version 0
 
 include("enum.jl")
+include(joinpath("types", "widepixel.jl"))
 include("utils.jl")
 include("files.jl")
 include("tags.jl")
@@ -35,7 +36,7 @@ include(joinpath("types", "lazy.jl"))
 include(joinpath("types", "mmapped.jl"))
 include("load.jl")
 
-export memmap, LazyBufferedTIFF, ifds
+export memmap, LazyBufferedTIFF, ifds, color, nchannels, channel
 
 @deprecate TiffFile(::Type{O}) where O<:Unsigned TiffFile{O}()
 

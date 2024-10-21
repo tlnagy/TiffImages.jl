@@ -18,30 +18,30 @@ end
 @testset "Extant File mmap" begin
     filepath = get_example("flagler.tif")
     let img = TiffImages.load(filepath, mmap=true)
-        @test eltype(img) === RGBA{N0f8}
+        @test eltype(img) === TiffImages.WidePixel{RGB{N0f8}, Tuple{N0f8}}
         @test size(img) === (200, 541)
-        c = img[34, 105]
-        @test green(c) > blue(c) > red(c)
-        @test alpha(c) == 1
-        c = img[61, 218]
-        @test red(c) > blue(c) > green(c)
+        p = img[34, 105]
+        @test green(p.color) > blue(p.color) > red(p.color)
+        @test p.extra == (1.0,)
+        p = img[61, 218]
+        @test red(p.color) > blue(p.color) > green(p.color)
         @test_throws BoundsError img[201, 541]
         @test_throws BoundsError img[200, 542]
-        @test img[200,541] isa RGBA{N0f8}
+        @test img[200,541] isa TiffImages.WidePixel{RGB{N0f8}, Tuple{N0f8}}
         imgeager = TiffImages.load(filepath)
         @test img == imgeager
 
         # Test that attempting to write the mmapped version throws an error,
         # unless we open with write permissions
-        imgeager[61, 218] = zero(c)
-        @test imgeager[61, 218] === zero(c)
-        @test_throws ReadOnlyMemoryError img[61, 218] = zero(c)
+        imgeager[61, 218] = zero(p)
+        @test imgeager[61, 218] === zero(p)
+        @test_throws ReadOnlyMemoryError img[61, 218] = zero(p)
 
         img = TiffImages.load(filepath, mmap=true, mode="r+")
-        img[61, 218] = zero(c)
-        @test img[61, 218] === zero(c)
+        img[61, 218] = zero(p)
+        @test img[61, 218] === zero(p)
         # Put the file back
-        img[61, 218] = c
+        img[61, 218] = p
     end
 
     # 3d
