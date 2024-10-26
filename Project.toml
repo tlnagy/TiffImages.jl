@@ -19,7 +19,7 @@ SIMD = "fdea26ae-647d-5447-a871-4b548cad5224"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
-ColorTypes = "0.10 - 0.12"
+ColorTypes = "0.10, 0.11, 0.12"
 DataStructures = "0.18"
 DocStringExtensions = "0.8.3, 0.9"
 FileIO = "1"
