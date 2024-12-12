@@ -284,6 +284,17 @@ $(FIELDS)
 # tag 34929 is a private tag registered to FedEx
     FEDEX_EDR = 34929	# unknown use
 	INTEROPERABILITYIFD = 40965 			 #  Pointer to Interoperability private directory
+
+	MODELPIXELSCALE = 33550
+	MODELTIEPOINT = 33922
+
+	GEOKEYDIRECTORY = 34735
+	GEODOUBLEPARAMS = 34736
+	GEOASCIIPARAMS = 34737
+
+	GDALMETADATA = 42112
+	GDALNODATA = 42113
+
 # Adobe Digital Negative (DNG) format tags */
 	DNGVERSION = 50706 			 #  &DNG version number
 	DNGBACKWARDVERSION = 50707 			 #  &DNG compatibility version
