@@ -39,6 +39,11 @@ mutable struct LazyBufferedTIFF{T <: ColorOrTuple, O <: Unsigned, AA <: Abstract
     """
     An internal cache to fill reading from disk
     """
+    working_cache::AA
+
+    """
+    An internal cache to fill with fully transformed data
+    """
     cache::AA
 
     """
@@ -57,7 +62,7 @@ mutable struct LazyBufferedTIFF{T <: ColorOrTuple, O <: Unsigned, AA <: Abstract
     readonly::Bool
 
     function LazyBufferedTIFF(file::TiffFile{O}, ifds::Vector{IFD{O}}, dims, cache::AA, cache_index::Int, last_ifd_offset::O, readonly::Bool) where {O, AA <: AbstractArray}
-        new{eltype(cache), O, typeof(cache)}(file, ifds, dims, cache, cache_index, last_ifd_offset, readonly)
+        new{eltype(cache), O, typeof(cache)}(file, ifds, dims, cache, cache, cache_index, last_ifd_offset, readonly)
     end
 end
 
@@ -124,9 +129,9 @@ function Base.getindex(A::LazyBufferedTIFF{T, O, AA}, i1::Int, i2::Int, i::Int) 
             A.file.io = getstream(format"TIFF", open(path), path)
         end
 
-        read!(A.cache, A.file, ifd)
+        read!(A.working_cache, A.file, ifd)
 
-        A.cache = transform(A.cache, ifd)
+        A.cache = transform(A.working_cache, ifd)
 
         A.cache_index = i
     end

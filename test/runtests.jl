@@ -222,8 +222,14 @@ end
 @testset "Tiled" begin
     uncompressed = get_example("shapes_uncompressed.tif")
     compressed_tiled = get_example("shapes_lzw_tiled.tif")
-    @test TiffImages.load(uncompressed) == TiffImages.load(compressed_tiled)
-    @test TiffImages.load(uncompressed)[:] == TiffImages.load(compressed_tiled; lazyio=true)[:]
+    compressed_tiled_multi = get_example("shapes_tiled_multi.tif")
+    uncompressed_loaded = TiffImages.load(uncompressed)
+    compressed_tiled_multi_loaded = TiffImages.load(compressed_tiled_multi; lazyio=true)
+    @test uncompressed_loaded == TiffImages.load(compressed_tiled)
+    @test uncompressed_loaded[:] == TiffImages.load(compressed_tiled; lazyio=true)[:]
+    @test compressed_tiled_multi_loaded[:,:,1] == uncompressed_loaded
+    @test compressed_tiled_multi_loaded[:,:,2] == uncompressed_loaded
+    @test compressed_tiled_multi_loaded[:,:,3] == uncompressed_loaded
 end
 
 @testset "Planar" begin
