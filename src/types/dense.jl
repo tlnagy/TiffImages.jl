@@ -157,7 +157,7 @@ function _writeslice(pagecache, tf::TiffFile{O, S}, slice, ifd, prev_ifd_record)
     if is_irregular_bps(ifd)
         temp = collect(reinterpret(eltype(interpretation(ifd)), plain_data_view))
         columns = ncols(ifd) * nsamples(ifd)
-        pagecache = code(temp, columns)
+        pagecache = pack_integers(temp, columns)
     else
         pagecache .= reinterpret(UInt8, plain_data_view)
     end
@@ -220,10 +220,10 @@ end
 
 Base.push!(A::DenseTaggedImage{T, N, O, AA}, data) where {T, N, O, AA} = error("push! is only supported for memory mapped images. See `LazyBufferedTIFF`.")
 
-code(A::AbstractVector{<: Normed{T, N}}, columns::Int) where {T, N} = code(reinterpret(T, A), columns, N)
+pack_integers(A::AbstractVector{<: Normed{T, N}}, columns::Int) where {T, N} = pack_integers(reinterpret(T, A), columns, N)
 
 # {AAXX, BBXX, CCXX} => {AAB, BCC}
-function code(A::AbstractVector{T}, columns::Int, N::Int) where T <: Unsigned
+function pack_integers(A::AbstractVector{T}, columns::Int, N::Int) where T <: Unsigned
     if N == 8 || N == 16 || N == 32 || N == 64
         return reinterpret(UInt8, A)
     end
