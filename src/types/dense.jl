@@ -153,7 +153,15 @@ Base.write(io::IOStream, img::DenseTaggedImage) = write(getstream(format"TIFF", 
 function _writeslice(pagecache, tf::TiffFile{O, S}, slice, ifd, prev_ifd_record) where {O, S}
     data_pos = position(tf.io) # start of data
     plain_data_view = reshape(PermutedDimsArray(slice, (2, 1)), :)
-    pagecache .= reinterpret(UInt8, plain_data_view)
+
+    if is_irregular_bps(ifd)
+        temp = collect(reinterpret(eltype(interpretation(ifd)), plain_data_view))
+        columns = ncols(ifd) * nsamples(ifd)
+        pagecache = pack_integers(temp, columns)
+    else
+        pagecache .= reinterpret(UInt8, plain_data_view)
+    end
+
     write(tf, pagecache) # write data
     ifd_pos = position(tf.io)
 
@@ -211,3 +219,49 @@ function save(filepath::String, data)
 end
 
 Base.push!(A::DenseTaggedImage{T, N, O, AA}, data) where {T, N, O, AA} = error("push! is only supported for memory mapped images. See `LazyBufferedTIFF`.")
+
+pack_integers(A::AbstractVector{<: Normed{T, N}}, columns::Int) where {T, N} = pack_integers(reinterpret(T, A), columns, N)
+
+# {AAXX, BBXX, CCXX} => {AAB, BCC}
+function pack_integers(A::AbstractVector{T}, columns::Int, N::Int) where T <: Unsigned
+    if N == 8 || N == 16 || N == 32 || N == 64
+        return reinterpret(UInt8, A)
+    end
+
+    @debug "encoding data"
+
+    rows = cld(length(A), columns)
+    out::Vector{UInt8} = Vector{UInt8}(undef, rows * cld(columns * N, 8))
+    out_index = 1
+    in_index = 1
+    mask = (T(1) << N) - 1
+    in_length = length(A)
+    for _ in 1:rows
+        buffer::UInt64 = 0
+        bitcount = 0
+        values = 0
+        while values < columns
+            while bitcount < 8 && in_index <= in_length && values < columns
+                buffer = Base.shl_int(buffer, N)
+                @inbounds buffer = buffer | (A[in_index] & mask)
+                bitcount += N
+                in_index += 1
+                values += 1
+                if values == columns && bitcount % 8 != 0
+                    buffer = buffer << (8 - (bitcount % 8))
+                    bitcount = cld(bitcount, 8) * 8
+                end
+            end
+
+            while bitcount >= 8
+                out[out_index] = convert(UInt8, Base.lshr_int(buffer, bitcount - 8) & 0xff)
+                bitcount -= 8
+                out_index += 1
+            end
+        end
+
+        @assert bitcount == 0
+    end
+
+    out
+end

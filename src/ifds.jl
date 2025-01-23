@@ -301,7 +301,7 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
                 sz = uncompressed_size(ifd, cls, rws)
                 read!(tfs, view(reinterpret(UInt8, vec(arr)), 1:sz), comp)
                 if is_irregular_bps(ifd)
-                    arr .= recode(arr, rws, cls, bps)
+                    arr .= unpack_integers(arr, rws, cls, bps)
                 end
                 reverse_prediction!(tfs.ifd, arr)
             end
@@ -543,24 +543,24 @@ end
     end
 end
 
-recode(v::AbstractVector, n::Integer) = recode(v, 1, length(v), n)
+unpack_integers(v::AbstractVector, n::Integer) = unpack_integers(v, 1, length(v), n)
 
-recode(v::AbstractVector, c::Integer, n::Integer) = recode(v, fld(length(v), c), c, n)
+unpack_integers(v::AbstractVector, c::Integer, n::Integer) = unpack_integers(v, fld(length(v), c), c, n)
 
-# recode `r` rows of `c` n-bit integers to useful word-sized integers
-recode(v::AbstractVector, r, c, n::Integer) = recode(v, r, c, Val(n))
+# unpack_integers `r` rows of `c` n-bit integers to useful word-sized integers
+unpack_integers(v::AbstractVector, r, c, n::Integer) = unpack_integers(v, r, c, Val(n))
 
 # for SIMD, must have (c % M) == 0 && (M * N) % (K * 8) == 0, where M is
 # the vector width used by the SIMD algorithm; M = 32 doesn't work for
 # {27, 29, 31} (K = 8), so we step up to the next power of two
 for N in (27, 29, 31)
-    @eval recode(v::AbstractVector, r, c, n::Val{$N}) = c % 64 == 0 ? recode_simd(v, n) : recode_slow(v, r, c, $N)
+    @eval unpack_integers(v::AbstractVector, r, c, n::Val{$N}) = c % 64 == 0 ? unpack_integers_simd(v, n) : unpack_integers_slow(v, r, c, $N)
 end
 
-recode(v::AbstractVector, r, c, n::Val{N}) where N = c % 32 == 0 ? recode_simd(v, n) : recode_slow(v, r, c, N)
+unpack_integers(v::AbstractVector, r, c, n::Val{N}) where N = c % 32 == 0 ? unpack_integers_simd(v, n) : unpack_integers_slow(v, r, c, N)
 
 # {AAA, ABB, BBC, CCC} => {AAAA, BBBB, CCCC}
-function recode_slow(v::AbstractVector{T}, rows::Integer, columns::Integer, n::Integer) where T
+function unpack_integers_slow(v::AbstractVector{T}, rows::Integer, columns::Integer, n::Integer) where T
     @debug "recoding from $n bits per sample"
 
     vb::Vector{UInt8} = reinterpret(UInt8, vec(v))
@@ -589,7 +589,7 @@ end
 const nice_n = filter(x -> !(max(nextpow(2, x), 8) - x in [0,1,2,3,5]), 1:31)
 
 # {AAA, ABB, BBC, CCC} => {AAAA, BBBB, CCCC}
-@generated function recode_simd(A::AbstractVector{T}, n::Val{N}) where {T, N}
+@generated function unpack_integers_simd(A::AbstractVector{T}, n::Val{N}) where {T, N}
     nice = N in nice_n
     TT = nice ? T : widen(T)
     width = max(32, sizeof(TT) * 8) # SIMD vector width

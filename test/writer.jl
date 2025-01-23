@@ -191,3 +191,19 @@ end
     img3 = TiffImages.load(path)
     @test occursin("test;", ifds(img3)[TiffImages.SOFTWARE].data)
 end
+
+@testset "DenseTaggedImage with unusual bit depth (#181)" begin
+    filepath = tempname()
+    for C in (Gray, RGB)
+        for T in (N0f8, N3f5, N4f12, N13f19, N12f52)
+            for size in (1,10,100,567)
+                data = C{T}.(rand(size, size))
+                TiffImages.save(filepath, data)
+
+                data_saveload = TiffImages.load(filepath)
+
+                @test data_saveload.data == data
+            end
+        end
+    end
+end
