@@ -547,7 +547,7 @@ unpack_integers(v::AbstractVector, n::Integer) = unpack_integers(v, 1, length(v)
 
 unpack_integers(v::AbstractVector, c::Integer, n::Integer) = unpack_integers(v, fld(length(v), c), c, n)
 
-# unpack_integers `r` rows of `c` n-bit integers to useful word-sized integers
+# unpack `r` rows of `c` n-bit integers to useful word-sized integers
 unpack_integers(v::AbstractVector, r, c, n::Integer) = unpack_integers(v, r, c, Val(n))
 
 # for SIMD, must have (c % M) == 0 && (M * N) % (K * 8) == 0, where M is
