@@ -13,6 +13,7 @@ using OffsetArrays
 using DataStructures
 using PkgVersion
 using ProgressMeter
+using PrecompileTools: @setup_workload, @compile_workload
 using Base.Iterators
 using Inflate
 using UUIDs
@@ -40,20 +41,13 @@ export memmap, LazyBufferedTIFF, ifds, color, nchannels, channel
 
 @deprecate TiffFile(::Type{O}) where O<:Unsigned TiffFile{O}()
 
-## Precompilation helper
-mktemp() do fpath, _
-    for t in Any[N0f8, N0f16, Float32, Float64]
-        for c in Any[Gray, GrayA, RGB, RGBA], sz in ((2, 2), (2, 2, 2))
-            TiffImages.save(fpath, rand(c{t}, sz))
-            TiffImages.load(fpath)
-            let img = TiffImages.load(fpath; mmap=true) end
-            let img = TiffImages.load(fpath; lazyio=true) end
-            # On Windows, trying to delete a file before garbage-collecting
-            # its corresponding mmapped-array results in an error.
-            # Here, this manifests as an error in precompiling the package,
-            # which is quite a serious problem.
-            # Thus try hard to make sure we free all the temporaries.
-            Sys.iswindows() && GC.gc()
+@setup_workload begin
+    files = filter(x -> endswith(x, ".tif"), readdir(joinpath(@__DIR__, "precomp-tifs", "images"), join = true))
+    @compile_workload begin
+        for file in files
+            TiffImages.load(file)
+            TiffImages.load(file; mmap=true)
+            TiffImages.load(file; lazyio=true)
         end
     end
 end
