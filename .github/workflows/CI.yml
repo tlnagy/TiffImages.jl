@@ -10,7 +10,7 @@ on:
     - master
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }} - ${{ matrix.experimental }} 
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,30 +21,33 @@ jobs:
           - 'nightly'
         os:
           - ubuntu-latest
-          - macOS-latest
+          - macos-latest
           - windows-latest
-        arch:
-          - x64
+        arch: [x64]
+        experimental: [false]
         include:
-          - os: ubuntu-latest
-            version: '1'
-            arch: x86
+          - os: macos-latest
+            version: 'lts'
+            arch: aarch64
           - os: macos-latest
             version: '1'
             arch: aarch64
           - os: macos-latest
             version: 'nightly'
             arch: aarch64
+            experimental: true
+          - os: ubuntu-latest
+            version: 'nightly'
+            experimental: true
+          - os: windows-latest
+            version: 'nightly'
+            experimental: true
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/julia-downgrade-compat@v1 # downgrade packages to minimum compatible version on 1.6
-        if: ${{ matrix.version == '1.6' }}
-        with:
-          skip: Mmap, UUIDs, Test
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
