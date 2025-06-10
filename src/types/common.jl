@@ -27,6 +27,8 @@ ifds(img::I) where {I<:AbstractTIFF{T,2} where {T}} = first(getfield(img, :ifds)
 ifds(img::I) where {I<:AbstractTIFF} = getfield(img, :ifds)
 
 interpretation(img::AbstractArray) = interpretation(eltype(img))
+interpretation(::IndirectArray{T,N,I}) where {T,N,I} = PHOTOMETRIC_PALETTE
+interpretation(::SubArray{T,N,P}) where {T,N,P<:IndirectArray{X,Y,I}} where {X,Y,I} = PHOTOMETRIC_PALETTE
 interpretation(::Type{WidePixel{C,X}}) where {C,X} = interpretation(C)
 interpretation(::Type{T}) where {T<:Gray} = PHOTOMETRIC_MINISBLACK
 interpretation(::Type{T}) where {T<:AbstractRGB} = PHOTOMETRIC_RGB
