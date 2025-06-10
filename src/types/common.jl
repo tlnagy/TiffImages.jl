@@ -34,12 +34,14 @@ interpretation(::Type{<:TransparentColor{C,T,N}}) where {C,T,N} = interpretation
 interpretation(::Type) = PHOTOMETRIC_MINISBLACK
 
 samplesperpixel(img::AbstractArray) = samplesperpixel(eltype(img))
+samplesperpixel(::IndirectArray{T,N,I}) where {T,N,I} = 1
+samplesperpixel(::SubArray{T,N,P}) where {T,N,P<:IndirectArray{X,Y,I}} where {X,Y,I} = 1
 samplesperpixel(::Type{<:Colorant{T,N}}) where {T,N} = N
 samplesperpixel(t::Type{<:WidePixel{C,X}}) where {C,X} = samplesperpixel(C) + length(fieldnames(X))
 
 bitspersample(img::AbstractArray) = bitspersample(eltype(img))
-bitspersample(img::IndirectArray{T,N,I}) where {T,N,I} = bitspersample(I)
-bitspersample(img::SubArray{T,N,P}) where {T,N,P<:IndirectArray{X,Y,I}} where {X,Y,I} = bitspersample(I)
+bitspersample(::IndirectArray{T,N,I}) where {T,N,I} = bitspersample(I)
+bitspersample(::SubArray{T,N,P}) where {T,N,P<:IndirectArray{X,Y,I}} where {X,Y,I} = bitspersample(I)
 bitspersample(T::Type{<:WidePixel}) = collect(flatten(bitspersample.(fieldtypes(T))))
 bitspersample(T::Type{<:Colorant}) = collect(bitspersample.(fieldtypes(T)))
 bitspersample(T::Type{<:Tuple}) = collect(bitspersample.(fieldtypes(T)))

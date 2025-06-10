@@ -137,8 +137,7 @@ function _constructifd(data::AbstractArray{T, 2}, ::Type{O}) where {T <: ColorOr
     bitpersample = UInt16.(bitspersample(data))
     ifd[BITSPERSAMPLE] = bitpersample isa Integer ? bitpersample : collect(bitpersample)
     ifd[PHOTOMETRIC] = interpretation(data)
-    n_samples = samplesperpixel(data)
-    ifd[SAMPLESPERPIXEL] = UInt16(n_samples)
+    ifd[SAMPLESPERPIXEL] = UInt16(samplesperpixel(data))
     if !(T <: Gray{N7f1}) # bilevel images don't have the sampleformat tag
         ifd[SAMPLEFORMAT] = collect(UInt16.(sampleformat(data)))
     end
