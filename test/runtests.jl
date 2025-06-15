@@ -365,3 +365,48 @@ end
     @test isapprox(sum(sum.(TiffImages.channel.(Ref(original), 1:3))), 23145.05882)
     @test isapprox(sum(sum.(TiffImages.channel.(Ref(hyper), 1:7))), 33282.65886)
 end
+
+@testset "T6Decoding" begin
+    function decode(input::AbstractVecOrMat{UInt8}, expected_output::Matrix{Int})
+        output = zeros(UInt8, length(expected_output))
+        nrows, ncols = size(expected_output)
+        TiffImages.t6_decode!(reshape(input, :), ncols, nrows, output)
+        decodedimage = reshape(output, ncols, nrows)'
+        return decodedimage == expected_output
+    end
+    
+    @test decode([0b00100110 0b10100010 0b01011011 0b00000000 0b00010000 0b00000001],
+        [ 0 0 0 0 0 0 0 0 0 1 
+          1 0 0 0 0 0 0 0 0 0 ])
+    @test decode([0b00100110 0b10100010 0b01101100 0b00000000 0b01000000 0b00000100],
+        [ 0 0 0 0 0 0 0 0 0 1 
+          0 0 0 0 0 0 0 0 0 0 ])
+    @test decode([0b00100110 0b10100010 0b01100101 0b10001110 0b11000000 0b00000100 0b00000000 0b01000000],
+        [ 0 0 0 0 0 0 0 0 0 1 
+          0 0 0 0 1 0 0 0 0 0 ])
+    @test decode([0b00100110 0b10100010 0b01011001 0b10000111 0b01100000 0b00000010 0b00000000 0b00100000],
+        [ 0 0 0 0 0 0 0 0 0 1 
+          1 0 0 0 1 0 0 0 0 0 ])
+    @test decode([0b00100110 0b10100001 0b00011001 0b10000111 0b10000000 0b00001000 0b00000000 0b10000000],
+        [ 0 0 0 0 0 0 0 0 0 0 
+          1 0 0 0 1 0 0 0 0 0 ])
+    @test decode([0b01010010 0b01101010 0b10001100 0b00100110 0b00000000 0b00100000 0b00000010],
+        [ 1 1 1 1 1 1 1 1 1 0 
+          0 1 1 1 0 1 1 1 1 1 ])
+    @test decode([0b01010010 0b01101010 0b10011000 0b00000000 0b10000000 0b00001000],
+        [ 1 1 1 1 1 1 1 1 1 0 
+          0 1 1 1 1 1 1 1 1 1 ])
+    @test decode([0b10010011 0b01010101 0b00000000 0b00010000 0b00000001],
+        [ 1 1 1 1 1 1 1 1 1 1 
+          0 1 1 1 1 1 1 1 1 1 ])
+    @test decode([0b01010011 0b01101001 0b10000000 0b00001000 0b00000000 0b10000000],
+        [ 1 1 1 1 1 1 1 1 1 0 
+          1 1 1 1 0 1 1 1 1 1 ])
+    @test decode([0b00110000 0b10100001 0b00000101 0b01110000 0b00000001 0b00000000 0b00010000],
+        [ 1 1 1 0 1 1 1
+          1 0 1 0 0 1 1 ])
+    @test decode([0b00101110 0b10010101 0b11000001 0b00011101 0b11000010 0b01010000 0b00000001 0b00000000 0b00010000],
+        [ 1 1 0 1 1 1 0
+          1 1 1 0 0 0 0
+          0 0 1 1 0 1 0 ])
+end
