@@ -298,10 +298,14 @@ function Base.read!(target::AbstractArray{T, N}, tf::TiffFile{O, S}, ifd::IFD{O}
                 cls = istiled(ifd) ? tilecols(ifd) : cols
                 cls = isplanar(ifd) ? cls : cls * spp # number of samples (not pixels) per column
                 rws = fld(length(arr), cls)
-                sz = uncompressed_size(ifd, cls, rws)
-                read!(tfs, view(reinterpret(UInt8, vec(arr)), 1:sz), comp)
-                if is_irregular_bps(ifd)
-                    arr .= unpack_integers(arr, rws, cls, bps)
+                if compression == COMPRESSION_CCITT_T6
+                    read!(tfs, reinterpret(UInt8, vec(arr)), comp)
+                else
+                    sz = uncompressed_size(ifd, cls, rws)
+                    read!(tfs, view(reinterpret(UInt8, vec(arr)), 1:sz), comp)
+                    if is_irregular_bps(ifd)
+                        arr .= unpack_integers(arr, rws, cls, bps)
+                    end
                 end
                 reverse_prediction!(tfs.ifd, arr)
             end
