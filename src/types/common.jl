@@ -42,7 +42,7 @@ samplesperpixel(::Type{<:Colorant{T,N}}) where {T,N} = N
 samplesperpixel(t::Type{<:WidePixel{C,X}}) where {C,X} = samplesperpixel(C) + length(fieldnames(X))
 
 bitspersample(img::AbstractArray) = bitspersample(eltype(img))
-bitspersample(::IndirectArray{T,N,I}) where {T,N,I} = bitspersample(I)
+bitspersample(::IndirectArray{T,N,I}) where {T,N,I} = I <: Integer ? bitspersample(I) : bitspersample(eltype(I)) # I is an integer after IndirectArray v1
 bitspersample(::SubArray{T,N,P}) where {T,N,P<:IndirectArray{X,Y,I}} where {X,Y,I} = bitspersample(I)
 bitspersample(T::Type{<:WidePixel}) = collect(flatten(bitspersample.(fieldtypes(T))))
 bitspersample(T::Type{<:Colorant}) = collect(bitspersample.(fieldtypes(T)))
