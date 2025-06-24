@@ -365,3 +365,11 @@ end
     @test isapprox(sum(sum.(TiffImages.channel.(Ref(original), 1:3))), 23145.05882)
     @test isapprox(sum(sum.(TiffImages.channel.(Ref(hyper), 1:7))), 33282.65886)
 end
+
+@testset "Palette color images" begin
+    img = TiffImages.load(get_example("poppies.tif"))
+    
+    @test ifds(img)[TiffImages.BITSPERSAMPLE].data == UInt16(8)
+    @test ifds(img)[TiffImages.SAMPLESPERPIXEL].data == UInt16(1)
+    @test ifds(img)[TiffImages.PHOTOMETRIC].data == UInt16(TiffImages.PHOTOMETRIC_PALETTE)
+end
