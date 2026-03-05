@@ -147,6 +147,12 @@ else
     const _safe_open = open
 end
 
-function memcpy(dest::Ptr{T}, src::Ptr{T}, n::Int) where T
-    ccall(:memcpy, Ptr{T}, (Ptr{T}, Ptr{T}, Int), dest, src, n)
+@static if isdefined(Base, :memcpy)
+    function memcpy(dest::Ptr{T}, src::Ptr{T}, n::Int) where T
+        Base.memcpy(dest, src, n)
+    end
+else
+    function memcpy(dest::Ptr{T}, src::Ptr{T}, n::Int) where T
+        ccall(:memcpy, Ptr{T}, (Ptr{T}, Ptr{T}, Int), dest, src, n)
+    end
 end
