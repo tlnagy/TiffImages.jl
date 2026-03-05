@@ -356,6 +356,8 @@ end
 
     @test TiffImages.nchannels(original) == 3
     @test TiffImages.nchannels(hyper) == 7
+    @test TiffImages.nchannels(original') == 3
+    @test TiffImages.nchannels(hyper') == 7
 
     @test TiffImages.channel(hyper[100], 4) == 0.1f0
     @test TiffImages.channel(hyper[200], 5) == 0.2f0

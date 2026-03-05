@@ -92,6 +92,7 @@ Return the number of channels in each pixel
 For example, an image with RGB pixels has 3 channels
 """
 nchannels(img::AbstractTIFF) = nchannels(eltype(img))
+nchannels(img::AbstractArray{<:ColorOrTuple}) = nchannels(eltype(img))
 nchannels(x) = _length(x)
 nchannels(::Type{WidePixel{C,X}}) where {C,X} = _length(C) + _length(X)
 nchannels(::WidePixel{C,X}) where {C,X} = _length(C) + _length(X)
