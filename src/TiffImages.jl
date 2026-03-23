@@ -15,6 +15,7 @@ using PkgVersion
 using ProgressMeter
 using PrecompileTools: @setup_workload, @compile_workload
 using Base.Iterators
+using CodecZstd
 using Inflate
 using UUIDs
 using Mmap
