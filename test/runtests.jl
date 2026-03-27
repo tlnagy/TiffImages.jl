@@ -221,7 +221,7 @@ end
 
 @testset "ZSTD" begin
     uncompressed = get_example("shapes_uncompressed.tif")
-    compressed = joinpath(@__DIR__, "shapes_zstd.tif")
+    compressed = get_example("shapes_zstd.tif")
     @test TiffImages.load(uncompressed) == TiffImages.load(compressed)
 end
 
