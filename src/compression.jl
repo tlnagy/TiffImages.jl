@@ -39,6 +39,10 @@ function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRE
     readbytes!(InflateZlibStream(tfs.io), arr)
 end
 
+function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_ZSTD})
+    read!(ZstdDecompressorStream(tfs.io), arr)
+end
+
 function lzw_decode!(io, arr)
     CLEAR_CODE::Int = 256 + 1
     EOI_CODE::Int = 257 + 1
