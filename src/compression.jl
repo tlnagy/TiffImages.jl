@@ -40,7 +40,7 @@ function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRE
 end
 
 function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_ZSTD})
-    read!(ZstdDecompressorStream(tfs.io), arr)
+    read!(InflateZstdStream(tfs.io), arr)
 end
 
 function lzw_decode!(io, arr)
