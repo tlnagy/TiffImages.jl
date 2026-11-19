@@ -1,5 +1,3 @@
-import .Iterators: partition
-
 """
     $(SIGNATURES)
 
@@ -97,7 +95,7 @@ function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, ::Nothing; verbose = tr
 
     cache = _getcache(ifd)
     read!(cache, tf, ifd)
-    Matrix(transform(cache, ifd))
+    transform!(similar(cache, nrows(ifd), ncols(ifd)), cache, ifd)
 end
 
 function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N, homogeneous::Val{true}; verbose = true)
@@ -109,7 +107,7 @@ function load(tf::TiffFile, ifds::AbstractVector{<:IFD}, N, homogeneous::Val{tru
 
     @showprogress desc="Loading:" enabled=verbose for (idx, ifd) in enumerate(ifds)
         read!(cache, tf, ifd)
-        data[:, :, idx] .= transform(cache, ifd)
+        transform!(view(data, :, :, idx), cache, ifd)
     end
 
     return data
@@ -138,7 +136,32 @@ end
 
 transform(cache, ifd) = istiled(ifd) ? tile(cache, ifd) : cache'
 
-function tile(cache, ifd)
+"""
+    transform!(out, cache, ifd)
+
+Write the decoded `cache` for `ifd` into `out`, which must be an
+`nrows(ifd)` × `ncols(ifd)` matrix, without allocating intermediates.
+"""
+function transform!(out::AbstractMatrix, cache, ifd)
+    if istiled(ifd)
+        tile!(out, cache, ifd)
+    else
+        out .= cache'
+    end
+    out
+end
+
+tile(cache, ifd) = tile!(similar(cache, nrows(ifd), ncols(ifd)), cache, ifd)
+
+"""
+    tile!(out, cache, ifd)
+
+Reassemble the tiles decoded into `cache` into the `nrows(ifd)` × `ncols(ifd)`
+matrix `out`. Tiles are stored one after another in `cache`, ordered
+row-major across the image, and each tile is itself stored row-major. Tiles on
+the right and bottom edges are padded during encoding; the padding is skipped.
+"""
+function tile!(out::AbstractMatrix, cache::AbstractArray, ifd)
     rows = nrows(ifd)
     cols = ncols(ifd)
     width = tilecols(ifd) # width of a tile
@@ -147,12 +170,26 @@ function tile(cache, ifd)
     tilesheight = cld(rows, height) # number of tiles in a column
     tilesize = width * height # number of pixels in a tile
 
-    # tiles are encoded linearly; we need to reshape each strip into a tile and ...
-    tiles = adjoint.(reshape.(partition(cache, tilesize), width, height))
+    size(out) == (rows, cols) || throw(DimensionMismatch("output has size $(size(out)), expected $((rows, cols))"))
+    length(cache) >= tileswidth * tilesheight * tilesize || throw(DimensionMismatch("cache is too small for $(tileswidth * tilesheight) tiles"))
 
-    # ... arrange the tiles to get a padded image, which needs to be ...
-    padded_image = vcat(map(row -> hcat(row...), partition(tiles, tileswidth))...)
+    _tile!(out, cache, rows, cols, width, height, tileswidth, tilesheight)
+end
 
-    # ... cropped because the encoded image is padded to tile boundaries
-    padded_image[1:rows, 1:cols]
+function _tile!(out, cache, rows, cols, width, height, tileswidth, tilesheight)
+    tilesize = width * height
+    @inbounds for tr in 0:tilesheight-1, tc in 0:tileswidth-1
+        base = (tr * tileswidth + tc) * tilesize # linear offset of this tile in `cache`
+        r0 = tr * height
+        c0 = tc * width
+        nr = min(height, rows - r0) # crop edge tiles
+        nc = min(width, cols - c0)
+        for i in 1:nr
+            rowbase = base + (i - 1) * width
+            for j in 1:nc
+                out[r0 + i, c0 + j] = cache[rowbase + j]
+            end
+        end
+    end
+    out
 end
