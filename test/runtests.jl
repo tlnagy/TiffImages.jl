@@ -236,6 +236,30 @@ end
     @test compressed_tiled_multi_loaded[:,:,1] == uncompressed_loaded
     @test compressed_tiled_multi_loaded[:,:,2] == uncompressed_loaded
     @test compressed_tiled_multi_loaded[:,:,3] == uncompressed_loaded
+
+    # reassembly of padded, row-major tiles, including partial edge tiles
+    for (rows, cols, th, tw) in [(16, 16, 16, 16), (20, 33, 8, 16), (7, 5, 16, 16), (37, 64, 16, 32)]
+        img = reshape(collect(UInt16, 1:rows*cols), rows, cols)
+        ntr, ntc = cld(rows, th), cld(cols, tw)
+        # reference encoder: pad to tile boundaries, store each tile row-major
+        padded = zeros(UInt16, ntr * th, ntc * tw)
+        padded[1:rows, 1:cols] .= img
+        cache = UInt16[]
+        for tr in 1:ntr, tc in 1:ntc
+            append!(cache, vec(permutedims(padded[(tr-1)*th+1:tr*th, (tc-1)*tw+1:tc*tw])))
+        end
+        ifd = TiffImages.IFD(UInt32)
+        ifd[TiffImages.IMAGELENGTH] = rows
+        ifd[TiffImages.IMAGEWIDTH] = cols
+        ifd[TiffImages.TILELENGTH] = th
+        ifd[TiffImages.TILEWIDTH] = tw
+        @test TiffImages.tile(cache, ifd) == img
+        out = zeros(UInt16, rows, cols, 2)
+        TiffImages.transform!(view(out, :, :, 2), cache, ifd)
+        @test out[:, :, 2] == img
+        @test all(iszero, out[:, :, 1])
+        @test_throws DimensionMismatch TiffImages.tile!(zeros(UInt16, rows + 1, cols), cache, ifd)
+    end
 end
 
 @testset "Planar" begin
