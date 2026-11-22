@@ -17,6 +17,7 @@ using PrecompileTools: @setup_workload, @compile_workload
 using Base.Iterators
 using CodecZstd
 using Inflate
+import LibDeflate
 using UUIDs
 using Mmap
 using SIMD

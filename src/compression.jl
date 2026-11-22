@@ -31,12 +31,51 @@ function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRE
     end
 end
 
-function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_DEFLATE})
-    readbytes!(InflateZlibStream(tfs.io), arr)
+Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_DEFLATE}) = inflate!(tfs, arr)
+
+Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_ADOBE_DEFLATE}) = inflate!(tfs, arr)
+
+"""
+    _iscontiguous(arr)
+
+Whether `arr` occupies a single contiguous block of memory, so `pointer(arr)`
+can be handed to C. Checked at runtime because nested views/reinterprets, like
+the buffers `read!` decodes into, are strided but not always `StridedVector`s.
+"""
+function _iscontiguous(arr::AbstractVector)
+    try
+        return stride(arr, 1) == 1
+    catch
+        return false
+    end
 end
 
-function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_ADOBE_DEFLATE})
-    readbytes!(InflateZlibStream(tfs.io), arr)
+"""
+    inflate!(tfs, arr)
+
+Decompress the zlib stream in the strip or tile `tfs` into `arr`.
+
+Uses libdeflate, which decodes the whole buffer at once and requires the
+stream to decompress to exactly `length(arr)` bytes with no trailing data. If
+that fails (e.g. a writer padded the strip) or `arr` is not contiguous in
+memory, falls back to the more lenient streaming decoder from Inflate.jl.
+"""
+function inflate!(tfs::TiffFileStrip, arr::AbstractVector{UInt8})
+    input = read(tfs.io)
+    n = length(arr)
+    if _iscontiguous(arr)
+        # a `Decompressor` is not thread safe and strips are decoded in parallel
+        result = GC.@preserve arr input LibDeflate.zlib_decompress!(
+            LibDeflate.Decompressor(),
+            LibDeflate.WriteableMemory(pointer(arr), UInt(n)),
+            LibDeflate.ReadableMemory(pointer(input), UInt(length(input))),
+            UInt(n),
+        )
+        result isa LibDeflate.LibDeflateError || return arr
+        @debug "libdeflate could not decode strip ($result), falling back to Inflate.jl"
+    end
+    readbytes!(InflateZlibStream(IOBuffer(input)), arr)
+    arr
 end
 
 function Base.read!(tfs::TiffFileStrip, arr::AbstractVector{UInt8}, ::Val{COMPRESSION_ZSTD})
