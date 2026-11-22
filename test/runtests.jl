@@ -219,6 +219,47 @@ end
     @test TiffImages.load(uncompressed) == TiffImages.load(compressed)
 end
 
+@testset "Deflate decoding" begin
+    LD = TiffImages.LibDeflate
+    raw = UInt8.(rand(0:15, 10_000))
+    buf = zeros(UInt8, length(raw) + 1024)
+    n = LD.zlib_compress!(LD.Compressor(), buf, raw)
+    @test !(n isa LD.LibDeflateError)
+    comp = buf[1:n]
+    ifd = TiffImages.IFD(UInt32)
+    strip(data) = TiffImages.TiffFileStrip{UInt32}(IOBuffer(data), ifd)
+
+    # libdeflate fast path
+    out = zeros(UInt8, length(raw))
+    TiffImages.inflate!(strip(comp), out)
+    @test out == raw
+
+    # trailing bytes after the stream: libdeflate rejects them, fallback must not
+    out = zeros(UInt8, length(raw))
+    TiffImages.inflate!(strip(vcat(comp, zeros(UInt8, 4))), out)
+    @test out == raw
+
+    # stream decodes to more bytes than expected: keep the leading bytes
+    out = zeros(UInt8, length(raw) - 100)
+    TiffImages.inflate!(strip(comp), out)
+    @test out == raw[1:end-100]
+
+    # non-contiguous destination
+    big = zeros(UInt8, 2 * length(raw))
+    v = view(big, 1:2:length(big))
+    @test !TiffImages._iscontiguous(v)
+    TiffImages.inflate!(strip(comp), v)
+    @test v == raw
+
+    # the buffer chain `read!` builds for colorant images must take the fast path
+    target = Matrix{Gray{N0f16}}(undef, 100, 100)
+    arr = view(reinterpret(UInt16, target), 1:length(raw)÷2)
+    dest = view(reinterpret(UInt8, vec(arr)), 1:length(raw))
+    @test TiffImages._iscontiguous(dest)
+    TiffImages.inflate!(strip(comp), dest)
+    @test dest == raw
+end
+
 @testset "ZSTD" begin
     uncompressed = get_example("shapes_uncompressed.tif")
     compressed = get_example("shapes_zstd.tif")
