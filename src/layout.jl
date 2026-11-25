@@ -60,6 +60,7 @@ end
 interpretation(p::PhotometricInterpretations, x::Union{Missing, ExtraSamples}) = interpretation(Val(p), Val(x))
 interpretation(::Val{PHOTOMETRIC_RGB}) = RGB
 interpretation(::Val{PHOTOMETRIC_MINISBLACK}) = Gray
+interpretation(::Val{PHOTOMETRIC_MINISWHITE}) = Gray
 interpretation(::Val{PHOTOMETRIC_PALETTE}) = Palette
 interpretation(::Val{PHOTOMETRIC_YCBCR}) = YCbCr
 interpretation(::Val{PHOTOMETRIC_CIELAB}) = Lab
